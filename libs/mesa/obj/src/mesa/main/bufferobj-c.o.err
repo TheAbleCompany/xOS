@@ -1,0 +1,102 @@
+In file included from ./src/c11/threads.h:44,
+                 from src/mesa/main/hash.h:37,
+                 from src/mesa/main/bufferobj.c:38:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/util/detect.h:46,
+                 from ./src/util/os_misc.h:40,
+                 from ./src/util/u_debug.h:49,
+                 from src/mesa/main/bufferobj.c:35:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+src/mesa/main/bufferobj.c: In function ‘bufferobj_data’:
+src/mesa/main/bufferobj.c:323:20: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 2 has type ‘long int’ [-Wformat=]
+  323 |       debug_printf("Create buffer size %" PRId64 " bind 0x%x\n",
+      |                    ^~~~~~~~~~~~~~~~~~~~~~
+  324 |                    (int64_t) size, bindings);
+      |                    ~~~~~~~~~~~~~~
+      |                    |
+      |                    long int
+In file included from src/mesa/main/bufferobj.c:34:
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/bufferobj.c: In function ‘bind_buffers_check_offset_and_size’:
+src/mesa/main/bufferobj.c:4237:19: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 4237 |                   "glBindBuffersRange(offsets[%u]=%" PRId64 " < 0)",
+      |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 4238 |                   index, (int64_t) offsets[index]);
+      |                          ~~~~~~~~~~~~~~~~~~~~~~~~
+      |                          |
+      |                          long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/bufferobj.c:4249:19: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 4249 |                   "glBindBuffersRange(sizes[%u]=%" PRId64 " <= 0)",
+      |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 4250 |                   index, (int64_t) sizes[index]);
+      |                          ~~~~~~~~~~~~~~~~~~~~~~
+      |                          |
+      |                          long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/bufferobj.c: In function ‘bind_uniform_buffers’:
+src/mesa/main/bufferobj.c:4420:25: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 4420 |                         "glBindBuffersRange(offsets[%u]=%" PRId64
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+......
+ 4424 |                         i, (int64_t) offsets[i],
+      |                            ~~~~~~~~~~~~~~~~~~~~
+      |                            |
+      |                            long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/bufferobj.c: In function ‘bind_shader_storage_buffers’:
+src/mesa/main/bufferobj.c:4523:25: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 4523 |                         "glBindBuffersRange(offsets[%u]=%" PRId64
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+......
+ 4527 |                         i, (int64_t) offsets[i],
+      |                            ~~~~~~~~~~~~~~~~~~~~
+      |                            |
+      |                            long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/bufferobj.c: In function ‘bind_xfb_buffers’:
+src/mesa/main/bufferobj.c:4690:25: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 4690 |                         "glBindBuffersRange(offsets[%u]=%" PRId64
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+......
+ 4693 |                         i, (int64_t) offsets[i]);
+      |                            ~~~~~~~~~~~~~~~~~~~~
+      |                            |
+      |                            long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/bufferobj.c:4699:25: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 4699 |                         "glBindBuffersRange(sizes[%u]=%" PRId64
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+......
+ 4702 |                         i, (int64_t) sizes[i]);
+      |                            ~~~~~~~~~~~~~~~~~~
+      |                            |
+      |                            long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/bufferobj.c: In function ‘bind_atomic_buffers’:
+src/mesa/main/bufferobj.c:4850:25: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 4850 |                         "glBindBuffersRange(offsets[%u]=%" PRId64
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+......
+ 4853 |                         i, (int64_t) offsets[i], ATOMIC_COUNTER_SIZE);
+      |                            ~~~~~~~~~~~~~~~~~~~~
+      |                            |
+      |                            long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"

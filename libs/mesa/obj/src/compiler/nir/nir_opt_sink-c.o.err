@@ -1,0 +1,20 @@
+In file included from ./src/c11/threads.h:44,
+                 from ./src/compiler/glsl_types.h:33,
+                 from src/compiler/nir/nir.h:32,
+                 from src/compiler/nir/nir_opt_sink.c:31:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/util/detect.h:46,
+                 from ./src/util/os_misc.h:40,
+                 from ./src/util/u_debug.h:49,
+                 from ./src/compiler/shader_enums.h:32,
+                 from ./src/compiler/glsl_types.h:32:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 

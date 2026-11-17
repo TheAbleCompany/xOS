@@ -1,0 +1,28 @@
+In file included from ./src/c11/threads.h:44,
+                 from src/mesa/main/mtypes.h:39,
+                 from src/mesa/main/extensions.h:39,
+                 from src/mesa/main/context.h:54,
+                 from src/mesa/main/syncobj.c:61:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/c11/threads.h:37:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+src/mesa/main/syncobj.c: In function ‘_mesa_WaitSync’:
+src/mesa/main/syncobj.c:461:42: warning: format ‘%llx’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘long unsigned int’ [-Wformat=]
+  461 |       _mesa_error(ctx, GL_INVALID_VALUE, "glWaitSync(timeout=0x%" PRIx64 ")",
+      |                                          ^~~~~~~~~~~~~~~~~~~~~~~~
+  462 |                   (uint64_t) timeout);
+      |                   ~~~~~~~~~~~~~~~~~~      
+      |                   |
+      |                   long unsigned int
+In file included from src/mesa/main/syncobj.c:58:
+./port/inc/inttypes.h:23:19: note: format string is defined here
+   23 | #define PRIx64 "llx"

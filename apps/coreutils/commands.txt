@@ -1,0 +1,7 @@
+gcc -c -nostdlib -fno-builtin hello.c -o hello.o
+gcc -c -nostdlib -fno-builtin echo.c -o echo.o
+gcc -nostdlib hello.o ../mini-libc/libc.a -o hello
+gcc -nostdlib echo.o ../mini-libc/libc.a -o echo
+
+cp hello ../hello
+cp echo ../echo

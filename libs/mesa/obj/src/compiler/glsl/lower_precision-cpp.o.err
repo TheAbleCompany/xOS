@@ -1,0 +1,233 @@
+In file included from ./src/c11/threads.h:44,
+                 from ./src/compiler/glsl_types.h:33,
+                 from src/compiler/glsl/lower_precision.cpp:30:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/util/detect_arch.h:49,
+                 from ./src/util/u_math.h:51,
+                 from ./src/mesa/main/macros.h:35,
+                 from src/compiler/glsl/lower_precision.cpp:28:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+In file included from /usr/include/c++/13/vector:60,
+                 from src/compiler/glsl/lower_precision.cpp:38:
+/usr/include/c++/13/bits/requires_hosted.h:34:4: error: #error "This header is not available in freestanding mode."
+   34 | #  error "This header is not available in freestanding mode."
+      |    ^~~~~
+In file included from /usr/include/x86_64-linux-gnu/c++/13/bits/c++allocator.h:33,
+                 from /usr/include/c++/13/bits/allocator.h:46,
+                 from /usr/include/c++/13/vector:63:
+/usr/include/c++/13/bits/new_allocator.h: In member function ‘_Tp* std::__new_allocator<_Tp>::allocate(size_type, const void*)’:
+/usr/include/c++/13/bits/new_allocator.h:139:20: error: ‘__throw_bad_array_new_length’ is not a member of ‘std’; did you mean ‘bad_array_new_length’?
+  139 |               std::__throw_bad_array_new_length();
+      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      |                    bad_array_new_length
+/usr/include/c++/13/bits/new_allocator.h:140:18: error: ‘__throw_bad_alloc’ is not a member of ‘std’
+  140 |             std::__throw_bad_alloc();
+      |                  ^~~~~~~~~~~~~~~~~
+/usr/include/c++/13/bits/allocator.h: At global scope:
+/usr/include/c++/13/bits/allocator.h:75:11: error: ‘allocator’ is not a class template
+   75 |     class allocator<void>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:76:5: error: explicit specialization of non-template ‘std::allocator’
+   76 |     {
+      |     ^
+/usr/include/c++/13/bits/allocator.h:89:19: error: ‘std::allocator’ is not a template
+   89 |         { typedef allocator<_Tp1> other; };
+      |                   ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:130:11: error: ‘std::allocator’ is not a template
+  130 |     class allocator : public __allocator_base<_Tp>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:75:11: note: previous declaration here
+   75 |     class allocator<void>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:237:22: error: ‘std::allocator’ is not a template
+  237 |     operator==(const allocator<_T1>&, const allocator<_T2>&)
+      |                      ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:237:45: error: ‘std::allocator’ is not a template
+  237 |     operator==(const allocator<_T1>&, const allocator<_T2>&)
+      |                                             ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:245:22: error: ‘std::allocator’ is not a template
+  245 |     operator!=(const allocator<_T1>&, const allocator<_T2>&)
+      |                      ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:245:45: error: ‘std::allocator’ is not a template
+  245 |     operator!=(const allocator<_T1>&, const allocator<_T2>&)
+      |                                             ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:255:11: error: ‘allocator’ is not a class template
+  255 |     class allocator<const _Tp>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:255:30: error: ‘std::allocator’ is not a template
+  255 |     class allocator<const _Tp>
+      |                              ^
+/usr/include/c++/13/bits/allocator.h:75:11: note: previous declaration here
+   75 |     class allocator<void>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:264:11: error: ‘allocator’ is not a class template
+  264 |     class allocator<volatile _Tp>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:264:33: error: ‘std::allocator’ is not a template
+  264 |     class allocator<volatile _Tp>
+      |                                 ^
+/usr/include/c++/13/bits/allocator.h:75:11: note: previous declaration here
+   75 |     class allocator<void>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:273:11: error: ‘allocator’ is not a class template
+  273 |     class allocator<const volatile _Tp>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:273:39: error: ‘std::allocator’ is not a template
+  273 |     class allocator<const volatile _Tp>
+      |                                       ^
+/usr/include/c++/13/bits/allocator.h:75:11: note: previous declaration here
+   75 |     class allocator<void>
+      |           ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:287:25: error: ‘allocator’ is not a class template
+  287 |   extern template class allocator<char>;
+      |                         ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:287:25: error: explicit instantiation of non-template type ‘std::allocator’
+/usr/include/c++/13/bits/allocator.h:288:25: error: ‘allocator’ is not a class template
+  288 |   extern template class allocator<wchar_t>;
+      |                         ^~~~~~~~~
+/usr/include/c++/13/bits/allocator.h:288:25: error: explicit instantiation of non-template type ‘std::allocator’
+In file included from /usr/include/c++/13/vector:66:
+/usr/include/c++/13/bits/stl_vector.h:427:44: error: ‘std::allocator’ is not a template
+  427 |   template<typename _Tp, typename _Alloc = std::allocator<_Tp> >
+      |                                            ^~~
+/usr/include/c++/13/bits/stl_vector.h: In member function ‘std::vector<_Tp, _Alloc>::size_type std::vector<_Tp, _Alloc>::_M_check_len(size_type, const char*) const’:
+/usr/include/c++/13/bits/stl_vector.h:1899:11: error: there are no arguments to ‘__throw_length_error’ that depend on a template parameter, so a declaration of ‘__throw_length_error’ must be available [-fpermissive]
+ 1899 |           __throw_length_error(__N(__s));
+      |           ^~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/13/bits/stl_vector.h:1899:11: note: (if you use ‘-fpermissive’, G++ will accept your code, but allowing the use of an undeclared name is deprecated)
+/usr/include/c++/13/bits/stl_vector.h: In static member function ‘static std::vector<_Tp, _Alloc>::size_type std::vector<_Tp, _Alloc>::_S_check_init_len(size_type, const allocator_type&)’:
+/usr/include/c++/13/bits/stl_vector.h:1910:11: error: there are no arguments to ‘__throw_length_error’ that depend on a template parameter, so a declaration of ‘__throw_length_error’ must be available [-fpermissive]
+ 1910 |           __throw_length_error(
+      |           ^~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/13/bits/stl_vector.h: At global scope:
+/usr/include/c++/13/bits/stl_vector.h:2020:34: error: ‘std::allocator’ is not a template
+ 2020 |            typename _Allocator = allocator<_ValT>,
+      |                                  ^~~~~~~~~
+In file included from /usr/include/c++/13/vector:67:
+/usr/include/c++/13/bits/stl_bvector.h: In member function ‘void std::vector<bool, _Alloc>::reserve(size_type)’:
+/usr/include/c++/13/bits/stl_bvector.h:1128:11: error: there are no arguments to ‘__throw_length_error’ that depend on a template parameter, so a declaration of ‘__throw_length_error’ must be available [-fpermissive]
+ 1128 |           __throw_length_error(__N("vector::reserve"));
+      |           ^~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/13/bits/stl_bvector.h: In member function ‘std::vector<bool, _Alloc>::size_type std::vector<bool, _Alloc>::_M_check_len(size_type, const char*) const’:
+/usr/include/c++/13/bits/stl_bvector.h:1533:11: error: there are no arguments to ‘__throw_length_error’ that depend on a template parameter, so a declaration of ‘__throw_length_error’ must be available [-fpermissive]
+ 1533 |           __throw_length_error(__N(__s));
+      |           ^~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/13/vector:72:
+/usr/include/c++/13/bits/vector.tcc: In member function ‘void std::vector<_Tp, _Alloc>::reserve(size_type)’:
+/usr/include/c++/13/bits/vector.tcc:71:9: error: there are no arguments to ‘__throw_length_error’ that depend on a template parameter, so a declaration of ‘__throw_length_error’ must be available [-fpermissive]
+   71 |         __throw_length_error(__N("vector::reserve"));
+      |         ^~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/13/vector:80:
+/usr/include/c++/13/bits/memory_resource.h: In member function ‘_Tp* std::pmr::polymorphic_allocator<_Tp>::allocate(std::size_t)’:
+/usr/include/c++/13/bits/memory_resource.h:161:16: error: ‘__throw_bad_array_new_length’ is not a member of ‘std’; did you mean ‘bad_array_new_length’?
+  161 |           std::__throw_bad_array_new_length();
+      |                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      |                bad_array_new_length
+In file included from /usr/include/c++/13/bits/stl_uninitialized.h:64,
+                 from /usr/include/c++/13/vector:65:
+/usr/include/c++/13/ext/alloc_traits.h: In instantiation of ‘struct __gnu_cxx::__alloc_traits<std::allocator, void>’:
+/usr/include/c++/13/bits/stl_vector.h:88:21:   required from ‘struct std::_Vector_base<ir_instruction*, std::allocator>’
+/usr/include/c++/13/bits/stl_vector.h:428:11:   required from ‘class std::vector<ir_instruction*>’
+src/compiler/glsl/lower_precision.cpp:105:37:   required from here
+/usr/include/c++/13/ext/alloc_traits.h:59:53: error: forming reference to void
+   59 |     typedef value_type&                             reference;
+      |                                                     ^~~~~~~~~
+/usr/include/c++/13/ext/alloc_traits.h:60:53: error: forming reference to void
+   60 |     typedef const value_type&                       const_reference;
+      |                                                     ^~~~~~~~~~~~~~~
+/usr/include/c++/13/bits/stl_vector.h: In instantiation of ‘class std::vector<ir_instruction*>’:
+src/compiler/glsl/lower_precision.cpp:105:37:   required from here
+/usr/include/c++/13/bits/stl_vector.h:443:64: error: static assertion failed: std::vector must have the same value_type as its allocator
+  443 |       static_assert(is_same<typename _Alloc::value_type, _Tp>::value,
+      |                                                                ^~~~~
+/usr/include/c++/13/bits/stl_vector.h:443:64: note: ‘std::integral_constant<bool, false>::value’ evaluates to false
+/usr/include/c++/13/bits/stl_vector.h: In instantiation of ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’:
+src/compiler/glsl/lower_precision.cpp:131:29:   required from here
+/usr/include/c++/13/bits/stl_vector.h:443:64: error: static assertion failed: std::vector must have the same value_type as its allocator
+/usr/include/c++/13/bits/stl_vector.h:443:64: note: ‘std::integral_constant<bool, false>::value’ evaluates to false
+In file included from /usr/include/c++/13/bits/stl_algobase.h:65,
+                 from /usr/include/c++/13/vector:62:
+/usr/include/c++/13/bits/stl_iterator_base_types.h: In instantiation of ‘struct std::iterator_traits<const void*>’:
+/usr/include/c++/13/bits/stl_iterator.h:1062:57:   required from ‘class __gnu_cxx::__normal_iterator<const void*, std::vector<ir_instruction*> >’
+src/compiler/glsl/lower_precision.cpp:214:26:   required from here
+/usr/include/c++/13/bits/stl_iterator_base_types.h:227:43: error: forming reference to void
+  227 |       typedef const _Tp&                  reference;
+      |                                           ^~~~~~~~~
+src/compiler/glsl/lower_precision.cpp: In member function ‘void {anonymous}::find_lowerable_rvalues_visitor::add_lowerable_children(const stack_entry&)’:
+src/compiler/glsl/lower_precision.cpp:214:26: error: no match for ‘operator*’ (operand type is ‘std::vector<ir_instruction*>::const_iterator’)
+  214 |    for (auto &it : entry.lowerable_children)
+      |                          ^~~~~~~~~~~~~~~~~~
+src/compiler/glsl/lower_precision.cpp: In member function ‘void {anonymous}::find_lowerable_rvalues_visitor::pop_stack_entry()’:
+src/compiler/glsl/lower_precision.cpp:221:37: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  221 |    const stack_entry &entry = stack.back();
+      |                                     ^~~~
+/usr/include/c++/13/bits/stl_iterator_base_types.h: In instantiation of ‘struct std::iterator_traits<void*>’:
+/usr/include/c++/13/bits/stl_iterator.h:1062:57:   required from ‘class __gnu_cxx::__normal_iterator<void*, std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry> >’
+src/compiler/glsl/lower_precision.cpp:227:38:   required from here
+/usr/include/c++/13/bits/stl_iterator_base_types.h:216:43: error: forming reference to void
+  216 |       typedef _Tp&                        reference;
+      |                                           ^~~~~~~~~
+src/compiler/glsl/lower_precision.cpp:227:40: error: no match for ‘operator[]’ (operand types are ‘std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>::iterator’ and ‘int’)
+  227 |       stack_entry &parent = stack.end()[-2];
+      |                                        ^
+src/compiler/glsl/lower_precision.cpp:251:43: error: no match for ‘operator[]’ (operand types are ‘std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>::iterator’ and ‘int’)
+  251 |          stack_entry &parent = stack.end()[-2];
+      |                                           ^
+src/compiler/glsl/lower_precision.cpp: In member function ‘virtual ir_visitor_status {anonymous}::find_lowerable_rvalues_visitor::visit(ir_constant*)’:
+src/compiler/glsl/lower_precision.cpp:336:13: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  336 |       stack.back().state = CANT_LOWER;
+      |             ^~~~
+src/compiler/glsl/lower_precision.cpp: In member function ‘virtual ir_visitor_status {anonymous}::find_lowerable_rvalues_visitor::visit(ir_dereference_variable*)’:
+src/compiler/glsl/lower_precision.cpp:348:14: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  348 |    if (stack.back().state == UNKNOWN)
+      |              ^~~~
+src/compiler/glsl/lower_precision.cpp:349:13: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  349 |       stack.back().state = handle_precision(ir->type, ir->precision());
+      |             ^~~~
+src/compiler/glsl/lower_precision.cpp: In member function ‘virtual ir_visitor_status {anonymous}::find_lowerable_rvalues_visitor::visit_enter(ir_dereference_record*)’:
+src/compiler/glsl/lower_precision.cpp:361:14: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  361 |    if (stack.back().state == UNKNOWN)
+      |              ^~~~
+src/compiler/glsl/lower_precision.cpp:362:13: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  362 |       stack.back().state = handle_precision(ir->type, ir->precision());
+      |             ^~~~
+src/compiler/glsl/lower_precision.cpp: In member function ‘virtual ir_visitor_status {anonymous}::find_lowerable_rvalues_visitor::visit_enter(ir_dereference_array*)’:
+src/compiler/glsl/lower_precision.cpp:372:14: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  372 |    if (stack.back().state == UNKNOWN)
+      |              ^~~~
+src/compiler/glsl/lower_precision.cpp:373:13: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  373 |       stack.back().state = handle_precision(ir->type, ir->precision());
+      |             ^~~~
+src/compiler/glsl/lower_precision.cpp: In member function ‘virtual ir_visitor_status {anonymous}::find_lowerable_rvalues_visitor::visit_enter(ir_texture*)’:
+src/compiler/glsl/lower_precision.cpp:386:10: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  386 |    stack.back().state = handle_precision(ir->type,
+      |          ^~~~
+src/compiler/glsl/lower_precision.cpp: In member function ‘virtual ir_visitor_status {anonymous}::find_lowerable_rvalues_visitor::visit_enter(ir_expression*)’:
+src/compiler/glsl/lower_precision.cpp:397:13: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  397 |       stack.back().state = CANT_LOWER;
+      |             ^~~~
+src/compiler/glsl/lower_precision.cpp:407:13: error: ‘class std::vector<{anonymous}::find_lowerable_rvalues_visitor::stack_entry>’ has no member named ‘back’
+  407 |       stack.back().state = CANT_LOWER;
+      |             ^~~~
+/usr/include/c++/13/bits/stl_vector.h: In instantiation of ‘std::_Vector_base<_Tp, _Alloc>::~_Vector_base() [with _Tp = {anonymous}::find_lowerable_rvalues_visitor::stack_entry; _Alloc = std::allocator]’:
+/usr/include/c++/13/bits/stl_vector.h:531:7:   required from here
+/usr/include/c++/13/bits/stl_vector.h:370:49: error: invalid use of ‘void’
+  370 |                       _M_impl._M_end_of_storage - _M_impl._M_start);
+      |                       ~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/13/ext/alloc_traits.h:34:
+/usr/include/c++/13/bits/alloc_traits.h: In instantiation of ‘static void std::allocator_traits< <template-parameter-1-1> >::deallocate(_Alloc&, pointer, size_type) [with _Alloc = std::allocator; pointer = void*; size_type = long unsigned int]’:
+/usr/include/c++/13/bits/stl_vector.h:390:19:   required from ‘void std::_Vector_base<_Tp, _Alloc>::_M_deallocate(pointer, std::size_t) [with _Tp = {anonymous}::find_lowerable_rvalues_visitor::stack_entry; _Alloc = std::allocator; pointer = void*; std::size_t = long unsigned int]’
+/usr/include/c++/13/bits/stl_vector.h:369:2:   required from ‘std::_Vector_base<_Tp, _Alloc>::~_Vector_base() [with _Tp = {anonymous}::find_lowerable_rvalues_visitor::stack_entry; _Alloc = std::allocator]’
+/usr/include/c++/13/bits/stl_vector.h:531:7:   required from here
+/usr/include/c++/13/bits/alloc_traits.h:360:13: error: ‘class std::allocator’ has no member named ‘deallocate’
+  360 |       { __a.deallocate(__p, __n); }
+      |         ~~~~^~~~~~~~~~

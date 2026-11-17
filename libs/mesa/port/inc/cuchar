@@ -1,0 +1,12 @@
+#ifndef MESA_PORT_CUCHAR
+#define MESA_PORT_CUCHAR
+#ifdef __cplusplus
+#include <uchar.h>
+namespace std {
+using ::mbrtoc16;
+using ::c16rtomb;
+using ::mbrtoc32;
+using ::c32rtomb;
+}
+#endif
+#endif

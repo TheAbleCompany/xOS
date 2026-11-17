@@ -1,0 +1,11 @@
+#ifndef MESA_PORT_CLOCALE
+#define MESA_PORT_CLOCALE
+#ifdef __cplusplus
+#include <locale.h>
+namespace std {
+using ::lconv;
+using ::setlocale;
+using ::localeconv;
+}
+#endif
+#endif

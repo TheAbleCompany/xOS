@@ -1,0 +1,24 @@
+In file included from ./src/c11/threads.h:44,
+                 from ./src/util/u_call_once.h:13,
+                 from src/util/u_process.c:55:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/util/detect.h:46,
+                 from ./src/util/os_misc.h:40,
+                 from src/util/u_process.c:28:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+src/util/u_process.c:188:9: note: ‘#pragma message: Warning: Per application configuration won't work with your OS version.’
+  188 | #pragma message ( "Warning: Per application configuration won't work with your OS version." )
+      |         ^~~~~~~
+src/util/u_process.c: In function ‘util_get_process_exec_path’:
+src/util/u_process.c:244:13: warning: implicit declaration of function ‘readlink’ [-Wimplicit-function-declaration]
+  244 |    if ((r = readlink("/proc/self/exe", process_path, len)) > 0)
+      |             ^~~~~~~~

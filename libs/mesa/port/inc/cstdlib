@@ -1,0 +1,49 @@
+#ifndef MESA_PORT_CSTDLIB
+#define MESA_PORT_CSTDLIB
+#ifdef __cplusplus
+#include <stdlib.h>
+namespace std {
+using ::div_t;
+using ::ldiv_t;
+using ::abort;
+using ::abs;
+using ::atexit;
+using ::at_quick_exit;
+using ::atof;
+using ::atoi;
+using ::atol;
+using ::bsearch;
+using ::calloc;
+using ::div;
+using ::exit;
+using ::free;
+using ::getenv;
+using ::labs;
+using ::ldiv;
+using ::malloc;
+using ::mblen;
+using ::mbstowcs;
+using ::mbtowc;
+using ::qsort;
+using ::quick_exit;
+using ::rand;
+using ::realloc;
+using ::srand;
+using ::strtod;
+using ::strtol;
+using ::strtoul;
+using ::system;
+using ::wcstombs;
+using ::wctomb;
+using ::lldiv_t;
+using ::_Exit;
+using ::llabs;
+using ::lldiv;
+using ::atoll;
+using ::strtoll;
+using ::strtoull;
+using ::strtof;
+using ::strtold;
+}
+#endif
+#endif

@@ -1,0 +1,10 @@
+--- Makefile	2026-10-24 15:50:22.165543100 +0000
++++ Makefile	2026-10-26 07:42:10.752564925 +0000
+@@ -66,6 +66,7 @@
+ 	          drivers/kb.o \
+ 	          drivers/vga.o \
+ 	          drivers/mouse.o \
++	          drivers/xhci.o \
+ 	          fs/fs.o \
+ 	          fs/ird.o \
+ 	          drivers/disk.o \

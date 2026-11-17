@@ -1,0 +1,13 @@
+In file included from /usr/include/x86_64-linux-gnu/sys/socket.h:33,
+                 from src/util/os_socket.c:16:
+/usr/include/x86_64-linux-gnu/bits/socket.h:33:9: error: unknown type name ‘__socklen_t’
+   33 | typedef __socklen_t socklen_t;
+      |         ^~~~~~~~~~~
+src/util/os_socket.c: In function ‘os_socket_block’:
+src/util/os_socket.c:70:23: error: ‘F_GETFL’ undeclared (first use in this function)
+   70 |    int old = fcntl(s, F_GETFL, 0);
+      |                       ^~~~~~~
+src/util/os_socket.c:70:23: note: each undeclared identifier is reported only once for each function it appears in
+src/util/os_socket.c:76:16: error: ‘F_SETFL’ undeclared (first use in this function)
+   76 |       fcntl(s, F_SETFL, old & ~O_NONBLOCK);
+      |                ^~~~~~~

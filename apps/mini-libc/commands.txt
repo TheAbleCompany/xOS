@@ -1,0 +1,5 @@
+gcc -c -nostdlib -fno-builtin hello.c -o hello.o
+gcc -nostdlib hello.o libc.a -o hello
+
+gcc -c -nostdlib -fno-builtin  -m64 -ffreestanding -fno-stack-protector  -fPIE -O2 -Wall -Wextra  -D_FORTIFY_SOURCE=0 hello.c -o hello.o
+gcc  -nostdlib -fno-builtin  -m64 -ffreestanding -fno-stack-protector  -fPIE -O2 -Wall -Wextra -D_FORTIFY_SOURCE=0 hello.o libc.a -o hello

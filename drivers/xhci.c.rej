@@ -1,0 +1,37 @@
+--- mouse.c	2026-10-24 15:50:33.053632300 +0000
++++ mouse.c	2026-10-26 07:42:10.770619178 +0000
+@@ -511,8 +511,12 @@
+  * ============================================
+  */
+ 
++extern void xhci_deferred(void);
++
+ void handle_mouse(void)
+ {
++    xhci_deferred();   /* USB hot-plug / восстановление endpoint'ов */
++
+     if (!mouse_present &&
+         mouse_dx == 0 &&
+         mouse_dy == 0)
+@@ -522,8 +526,10 @@
+     if (mouse_dx != 0 ||
+         mouse_dy != 0) {
+ 
+-        m_cursor_x += mouse_dx;
+-        m_cursor_y += mouse_dy;
++        int adx = __atomic_exchange_n(&mouse_dx, 0, __ATOMIC_SEQ_CST);
++        int ady = __atomic_exchange_n(&mouse_dy, 0, __ATOMIC_SEQ_CST);
++        m_cursor_x += adx;
++        m_cursor_y += ady;
+ 
+ 
+         /*
+@@ -567,7 +573,6 @@
+          * kernel context.
+          */
+ 
+-        mouse_dx = 0;
+-        mouse_dy = 0;
++        /* mouse_dx/dy уже обнулены атомарно выше */
+     }
+ }

@@ -1,0 +1,37 @@
+In file included from ./src/c11/threads.h:44,
+                 from src/mesa/main/mtypes.h:39,
+                 from src/mesa/main/bufferobj.h:32,
+                 from src/mesa/main/varray.c:32:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/c11/threads.h:37:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+src/mesa/main/varray.c: In function ‘vertex_array_vertex_buffer_err’:
+src/mesa/main/varray.c:3273:19: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 5 has type ‘long int’ [-Wformat=]
+ 3273 |                   "%s(offset=%" PRId64 " < 0)",
+      |                   ^~~~~~~~~~~~~
+ 3274 |                   func, (int64_t) offset);
+      |                         ~~~~~~~~~~~~~~~~
+      |                         |
+      |                         long int
+In file included from src/mesa/main/varray.c:28:
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"
+src/mesa/main/varray.c: In function ‘vertex_array_vertex_buffers’:
+src/mesa/main/varray.c:3440:25: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 6 has type ‘long int’ [-Wformat=]
+ 3440 |                         "%s(offsets[%u]=%" PRId64 " < 0)",
+      |                         ^~~~~~~~~~~~~~~~~~
+ 3441 |                         func, i, (int64_t) offsets[i]);
+      |                                  ~~~~~~~~~~~~~~~~~~~~
+      |                                  |
+      |                                  long int
+./port/inc/inttypes.h:20:19: note: format string is defined here
+   20 | #define PRId64 "lld"

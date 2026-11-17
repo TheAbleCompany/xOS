@@ -1,0 +1,30 @@
+In file included from ./src/c11/threads.h:44,
+                 from src/util/cnd_monotonic.h:31,
+                 from src/util/u_queue.h:38,
+                 from src/util/u_queue.c:27:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/c11/threads.h:37:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/resource.h:178,
+                 from /usr/include/x86_64-linux-gnu/sys/resource.h:24,
+                 from src/util/u_queue.c:39:
+/usr/include/x86_64-linux-gnu/bits/types/struct_timeval.h:8:8: error: redefinition of ‘struct timeval’
+    8 | struct timeval
+      |        ^~~~~~~
+In file included from src/util/u_queue.c:38:
+./port/inc/sys/time.h:7:8: note: originally defined here
+    7 | struct timeval { long tv_sec; long tv_usec; };
+      |        ^~~~~~~
+src/util/u_queue.c: In function ‘util_queue_thread_func’:
+src/util/u_queue.c:257:33: warning: implicit declaration of function ‘syscall’ [-Wimplicit-function-declaration]
+  257 |       setpriority(PRIO_PROCESS, syscall(SYS_gettid), 19);
+      |                                 ^~~~~~~

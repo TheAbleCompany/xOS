@@ -1,0 +1,14 @@
+In file included from src/gallium/auxiliary/util/u_driconf.h:27,
+                 from src/gallium/auxiliary/util/u_driconf.c:24:
+./src/util/xmlconfig.h: In function ‘driComputeOptionsSha1’:
+./src/util/xmlconfig.h:195:53: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 4 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+  195 |          ret = ralloc_asprintf_append(&dri_options, "%s:%" PRIu64 ",",
+      |                                                     ^~~~~~
+  196 |                                       cache->info[i].name,
+  197 |                                       cache->values[i]._uint64);
+      |                                       ~~~~~~~~~~~~~~~~~~~~~~~~
+      |                                                       |
+      |                                                       uint64_t {aka long unsigned int}
+In file included from ./src/util/xmlconfig.h:37:
+./port/inc/inttypes.h:22:19: note: format string is defined here
+   22 | #define PRIu64 "llu"

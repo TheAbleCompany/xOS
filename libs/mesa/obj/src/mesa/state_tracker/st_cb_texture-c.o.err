@@ -1,0 +1,24 @@
+In file included from ./src/c11/threads.h:44,
+                 from ./src/mesa/main/mtypes.h:39,
+                 from ./src/mesa/main/bufferobj.h:32,
+                 from src/mesa/state_tracker/st_cb_texture.c:29:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/c11/threads.h:37:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+In file included from src/mesa/state_tracker/st_cb_texture.c:75:
+src/mesa/state_tracker/st_cb_texture.c: In function ‘log_unmap_time_delta’:
+./src/util/log.h:70:69: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 9 has type ‘int64_t’ {aka ‘long int’} [-Wformat=]
+   70 | #define mesa_logi(fmt, ...) mesa_log(MESA_LOG_INFO, (MESA_LOG_TAG), (fmt), ##__VA_ARGS__)
+      |                                                                     ^~~~~
+src/mesa/state_tracker/st_cb_texture.c:624:4: note: in expansion of macro ‘mesa_logi’
+  624 |    mesa_logi("unmap %dx%d pixels of %s data for %s tex, %s path: "
+      |    ^~~~~~~~~

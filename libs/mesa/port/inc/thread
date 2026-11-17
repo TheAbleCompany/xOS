@@ -1,0 +1,19 @@
+#ifndef MESA_PORT_STD_THREAD
+#define MESA_PORT_STD_THREAD
+namespace std {
+class thread
+{
+public:
+    thread() noexcept { }
+    template <typename F, typename... A>
+    explicit thread(F &&, A &&...) { }
+    ~thread() { }
+    thread(const thread &) = delete;
+    thread &operator=(const thread &) = delete;
+    bool joinable() const noexcept { return false; }
+    void join() { }
+    void detach() { }
+};
+inline unsigned hardware_concurrency() noexcept { return 1; }
+}
+#endif

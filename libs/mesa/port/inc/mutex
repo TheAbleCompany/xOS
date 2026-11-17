@@ -1,0 +1,111 @@
+#ifndef MESA_PORT_STD_MUTEX
+#define MESA_PORT_STD_MUTEX
+
+namespace std {
+
+class mutex
+{
+public:
+    constexpr mutex() noexcept = default;
+    ~mutex() = default;
+    mutex(const mutex &) = delete;
+    mutex &operator=(const mutex &) = delete;
+
+    void lock() { }
+    void unlock() { }
+    bool try_lock() { return true; }
+    void native_handle() { }
+};
+
+class recursive_mutex
+{
+public:
+    constexpr recursive_mutex() noexcept = default;
+    ~recursive_mutex() = default;
+    recursive_mutex(const recursive_mutex &) = delete;
+    recursive_mutex &operator=(const recursive_mutex &) = delete;
+
+    void lock() { }
+    void unlock() { }
+    bool try_lock() { return true; }
+};
+
+enum class defer_lock_t { };
+enum class try_to_lock_t { };
+enum class adopt_lock_t { };
+
+constexpr defer_lock_t defer_lock{};
+constexpr try_to_lock_t try_to_lock{};
+constexpr adopt_lock_t adopt_lock{};
+
+template <typename M>
+class lock_guard
+{
+public:
+    typedef M mutex_type;
+    explicit lock_guard(M &m) : _m(m) { _m.lock(); }
+    lock_guard(M &m, adopt_lock_t) : _m(m) { }
+    ~lock_guard() { _m.unlock(); }
+    lock_guard(const lock_guard &) = delete;
+    lock_guard &operator=(const lock_guard &) = delete;
+
+private:
+    M &_m;
+};
+
+template <typename M>
+class unique_lock
+{
+public:
+    typedef M mutex_type;
+
+    unique_lock() noexcept : _pm(nullptr), _owns(false) { }
+    explicit unique_lock(M &m) : _pm(&m), _owns(false) { m.lock(); _owns = true; }
+    unique_lock(M &m, defer_lock_t) noexcept : _pm(&m), _owns(false) { }
+    unique_lock(M &m, try_to_lock_t) : _pm(&m), _owns(m.try_lock()) { }
+    unique_lock(M &m, adopt_lock_t) noexcept : _pm(&m), _owns(true) { }
+    ~unique_lock() { if (_owns) _pm->unlock(); }
+
+    unique_lock(const unique_lock &) = delete;
+    unique_lock &operator=(const unique_lock &) = delete;
+
+    unique_lock(unique_lock &&o) noexcept : _pm(o._pm), _owns(o._owns)
+    {
+        o._pm = nullptr;
+        o._owns = false;
+    }
+
+    unique_lock &operator=(unique_lock &&o) noexcept
+    {
+        if (this != &o) {
+            if (_owns) _pm->unlock();
+            _pm = o._pm;
+            _owns = o._owns;
+            o._pm = nullptr;
+            o._owns = false;
+        }
+        return *this;
+    }
+
+    void lock() { _pm->lock(); _owns = true; }
+    bool try_lock() { _owns = _pm->try_lock(); return _owns; }
+    void unlock() { if (_owns) { _pm->unlock(); _owns = false; } }
+    bool owns_lock() const noexcept { return _owns; }
+    explicit operator bool() const noexcept { return _owns; }
+    M *mutex() const noexcept { return _pm; }
+    M *release() noexcept { M *r = _pm; _pm = nullptr; _owns = false; return r; }
+
+private:
+    M *_pm;
+    bool _owns;
+};
+
+template <typename M>
+void lock(M &) { }
+
+template <typename M>
+void unlock(M &) { }
+
+}
+
+#endif

@@ -1,0 +1,236 @@
+CC = gcc
+LD = ld
+
+# ============================================================
+# Общие флаги
+# ============================================================
+
+COMMON_CFLAGS = \
+        -m64 \
+        -nostdlib \
+        -ffreestanding \
+        -fno-stack-protector \
+        -fPIE \
+        -fpie \
+        -O2 \
+        -Wall \
+        -Wextra \
+        -I../lib
+
+LDFLAGS = \
+        -m elf_x86_64 \
+        -nostdlib \
+        -e _start \
+        -static \
+        -pie
+
+
+# ============================================================
+# Обычные приложения
+# ============================================================
+
+CFLAGS = $(COMMON_CFLAGS) \
+        -mno-sse \
+        -mno-sse2 \
+        -mno-mmx \
+        -mno-ssse3
+
+
+# ============================================================
+# Raycaster
+#
+# Использует float/sin/cos/sqrt.
+# ============================================================
+
+RAYCASTER_CFLAGS = $(COMMON_CFLAGS) \
+        -msse2 \
+        -mfpmath=sse \
+        -fno-builtin-sincosf
+
+
+# ============================================================
+# libc
+# ============================================================
+
+LIBC_SRC = ../lib/libc.c
+LIBC_OBJ = libc.o
+
+
+# ============================================================
+# Приложения
+# ============================================================
+
+APPS = \
+        prefs.bin \
+        calc.bin \
+        files.bin \
+        notes.bin \
+        temu.bin \
+        raycaster.bin \
+        hovertank.bin
+
+
+# ============================================================
+# Build
+# ============================================================
+
+all: $(APPS) lua.copy
+
+# lua-1.0 собирается в lua-1.0-master (см. README-PORT.md);
+# сюда копируем готовый бинарник для mkinitrd2.
+lua.copy: lua-1.0-master/lua
+        cp -f lua-1.0-master/lua lua
+
+lua-1.0-master/lua:
+        $(MAKE) -C lua-1.0-master
+
+
+# ============================================================
+# libc
+# ============================================================
+
+libc.o: $(LIBC_SRC)
+        $(CC) $(CFLAGS) -c $< -o $@
+
+
+# ============================================================
+# Raycaster
+# ============================================================
+
+raycaster.o: raycaster.c
+        $(CC) $(RAYCASTER_CFLAGS) -c $< -o $@
+
+raycaster.bin: raycaster.o libc.o
+        $(LD) $(LDFLAGS) $^ -o $@
+
+# ============================================================
+# Hovertank: port HoverTank3DClone + userspace image loader
+# imgload (PNG gray/RGB/palette/grayA/RGBA 1-16 bit + BMP).
+# Sprites are decoded in USER SPACE; PNG files live in initrd.
+# ============================================================
+
+IMGLOAD_DIR = imgload
+
+IMGLOAD_OBJS = \
+        imgload.o \
+        inflate.o \
+        img_png.o \
+        img_bmp.o
+
+hovertank.o: hovertank.c $(IMGLOAD_DIR)/imgload.h
+        $(CC) $(RAYCASTER_CFLAGS) -c $< -o $@
+
+imgload.o: $(IMGLOAD_DIR)/imgload.c $(IMGLOAD_DIR)/imgload.h
+        $(CC) $(RAYCASTER_CFLAGS) -I$(IMGLOAD_DIR) -c $< -o $@
+
+inflate.o: $(IMGLOAD_DIR)/inflate.c $(IMGLOAD_DIR)/imgload.h
+        $(CC) $(RAYCASTER_CFLAGS) -I$(IMGLOAD_DIR) -c $< -o $@
+
+img_png.o: $(IMGLOAD_DIR)/img_png.c $(IMGLOAD_DIR)/imgload.h
+        $(CC) $(RAYCASTER_CFLAGS) -I$(IMGLOAD_DIR) -c $< -o $@
+
+img_bmp.o: $(IMGLOAD_DIR)/img_bmp.c $(IMGLOAD_DIR)/imgload.h
+        $(CC) $(RAYCASTER_CFLAGS) -I$(IMGLOAD_DIR) -c $< -o $@
+
+hovertank.bin: hovertank.o $(IMGLOAD_OBJS) libc.o
+        $(LD) $(LDFLAGS) $^ -o $@
+
+
+# ============================================================
+# xsh — GUI-терминал (запуск приложений с аргументами:
+# exec lua /comprehensive.lua)
+# ============================================================
+
+#xsh.bin: xsh.o libc.o
+#       $(LD) $(LDFLAGS) $^ -o $@
+
+
+# ============================================================
+# Остальные приложения
+# ============================================================
+
+prefs.bin: prefs.o libc.o
+        $(LD) $(LDFLAGS) $^ -o $@
+
+calc.bin: calc.o libc.o
+        $(LD) $(LDFLAGS) $^ -o $@
+
+files.bin: files.o libc.o
+        $(LD) $(LDFLAGS) $^ -o $@
+
+notes.bin: notes.o libc.o
+        $(LD) $(LDFLAGS) $^ -o $@
+
+temu.bin: temu.o libc.o
+        $(LD) $(LDFLAGS) $^ -o $@
+
+
+%.o: %.c
+        $(CC) $(CFLAGS) -c $< -o $@
+
+
+# ============================================================
+# Initrd
+# ============================================================
+
+# tcc (порт 2026): компилятор + его библиотеки + системные заголовки.
+# Сборка целиком делается build-artyomx64.sh (см. tinycc-mob/README-TCC.md).
+TCCDIR := tinycc-mob/build-art
+
+tcc.build:
+        $(MAKE) -C tinycc-mob build-art/bin/tcc
+
+TCC_HDR = \
+        stdio.h stdlib.h string.h ctype.h errno.h limits.h math.h \
+        setjmp.h time.h unistd.h fcntl.h stdint.h stdbool.h stddef.h \
+        stdarg.h float.h tgmath.h varargs.h stdalign.h stdnoreturn.h \
+        inttypes.h assert.h tccdefs.h
+
+TCC_SYS_HDR = stat.h types.h mman.h time.h
+TCC_INT_HDR = internal/types.h internal/essentials.h internal/io.h
+
+initrd: all tcc.build
+        ./mkinitrd2 \
+                temu.bin temu gui \
+                notes.bin notes gui \
+                prefs.bin prefs gui \
+                files.bin files gui \
+                calc.bin calc gui \
+                raycaster.bin raycaster gui \
+                hovertank.bin hovertank gui \
+                sprites/sanitar.png sanitar.png none \
+                sprites/chan.png chan.png none \
+                sprites/gameover.png gameover.png none \
+                ls ls console \
+                rm rm console \
+                cat cat console \
+                echo echo console \
+                lua lua console \
+                comprehensive.lua comprehensive.lua none \
+                bliss.bmp wp1.bmp none \
+                test.txt test.txt none \
+                test2.txt test2.txt none \
+                test test console \
+                hello_tcc_demo.c hello.c none \
+                sjt.c sjt.c none \
+                run run console \
+                stories260K.bin stories none \
+                tok512.bin tok none \
+                $(TCCDIR)/bin/tcc tcc console \
+                $(TCCDIR)/crt0.o crt0.o none \
+                $(TCCDIR)/libtcc1.a libtcc1.a none \
+                mini-libc/libc.a libc.a none \
+                $(foreach h,$(TCC_HDR),$(TCCDIR)/include/$(h) $(h) none) \
+                $(foreach h,$(TCC_SYS_HDR),$(TCCDIR)/include/sys/$(h) sys/$(h) none) \
+                $(foreach h,$(TCC_INT_HDR),$(TCCDIR)/include/$(h) $(h) none)
+
+        cp initrd.img ../initrd.img
+        cp initrd.img ../limine-iso-root/boot/initrd.img
+
+
+# ============================================================
+# Clean
+# ============================================================
+
+clean:
+        rm -f *.o *.bin lua initrd.img

@@ -1,0 +1,23 @@
+In file included from ./src/c11/threads.h:44,
+                 from ./src/mesa/main/mtypes.h:39,
+                 from src/compiler/glsl/gl_nir_link_varyings.c:33:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/util/detect_arch.h:49,
+                 from ./src/util/u_math.h:51,
+                 from ./src/mesa/main/macros.h:35,
+                 from src/compiler/glsl/gl_nir_link_varyings.c:31:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+In file included from ./src/util/perf/cpu_trace.h:9,
+                 from src/compiler/glsl/gl_nir_link_varyings.c:37:
+./src/util/perf/u_perfetto.h:34:9: error: unknown type name ‘clockid_t’
+   34 | typedef clockid_t perfetto_clock_id;
+      |         ^~~~~~~~~

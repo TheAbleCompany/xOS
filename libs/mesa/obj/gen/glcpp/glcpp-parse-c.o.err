@@ -1,0 +1,30 @@
+In file included from ./src/c11/threads.h:44,
+                 from ./src/mesa/main/mtypes.h:39,
+                 from glcpp-parse.y:32:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/util/u_string.h:43,
+                 from ./src/util/string_buffer.h:28,
+                 from ./src/compiler/glsl/glcpp/glcpp.h:36,
+                 from glcpp-parse.y:31:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+glcpp-parse.y: In function ‘glcpp_parser_parse’:
+glcpp-parse.y:252:50: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 3 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]
+glcpp-parse.y:260:19: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 3 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]
+glcpp-parse.y:260:19: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 4 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]
+glcpp-parse.y:267:19: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 3 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]
+glcpp-parse.y: In function ‘_token_print’:
+glcpp-parse.y:1272:39: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 3 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]
+glcpp-parse.y: In function ‘_token_paste’:
+glcpp-parse.y:1421:50: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 3 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]
+glcpp-parse.y:1426:57: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 4 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]
+glcpp-parse.y: In function ‘_glcpp_parser_handle_version_declaration’:
+glcpp-parse.y:2538:34: warning: format ‘%lli’ expects argument of type ‘long long int’, but argument 3 has type ‘intmax_t’ {aka ‘long int’} [-Wformat=]

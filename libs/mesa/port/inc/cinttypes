@@ -1,0 +1,15 @@
+#ifndef MESA_PORT_CINTTYPES
+#define MESA_PORT_CINTTYPES
+#ifdef __cplusplus
+#include <inttypes.h>
+namespace std {
+using ::imaxdiv_t;
+using ::imaxabs;
+using ::imaxdiv;
+using ::strtoimax;
+using ::strtoumax;
+using ::wcstoimax;
+using ::wcstoumax;
+}
+#endif
+#endif

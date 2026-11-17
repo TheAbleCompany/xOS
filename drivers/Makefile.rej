@@ -1,0 +1,16 @@
+--- drivers/Makefile	2026-10-24 15:50:32.664220900 +0000
++++ drivers/Makefile	2026-10-26 07:42:10.750453720 +0000
+@@ -6,10 +6,12 @@
+ .POSIX:
+ .PHONY: clean 
+ 
+-all: mon.o kb.o vga.o mouse.o tm.o  fb.o fnt.o pci.o disk.o #usb.o uhm.o
++all: mon.o kb.o vga.o mouse.o tm.o  fb.o fnt.o pci.o disk.o xhci.o #usb.o uhm.o
+ #video.o
+ #vesafb.o
+ 
++xhci.o: xhci.c xhci.h
++	$(CC) -c $(CFLAGS) -c '$<' -o '$@'
+ pci.o: pci.c
+ 	$(CC) -c $(CFLAGS) -c '$<' -o '$@'
+ disk.o: disk.c disk.h

@@ -1,0 +1,59 @@
+In file included from ./src/c11/threads.h:44,
+                 from ./src/util/u_thread.h:35,
+                 from ./src/util/u_cpu_detect.h:42,
+                 from ./src/util/half_float.h:32,
+                 from src/compiler/glsl/ir.h:33,
+                 from src/compiler/glsl/glsl_symbol_table.h:31,
+                 from src/compiler/glsl/glsl_parser_extras.h:34,
+                 from src/compiler/glsl/ast.h:29,
+                 from src/compiler/glsl/ast_array_index.cpp:24:
+./port/inc/pthread.h:21: warning: "PTHREAD_DESTRUCTOR_ITERATIONS" redefined
+   21 | #define PTHREAD_DESTRUCTOR_ITERATIONS 4
+      | 
+In file included from /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:161,
+                 from /usr/include/limits.h:195,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:205,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/syslimits.h:7,
+                 from /usr/lib/gcc/x86_64-linux-gnu/13/include/limits.h:34,
+                 from ./src/util/detect.h:46,
+                 from ./src/util/format/u_formats.h:32,
+                 from ./src/util/format/u_format.h:33,
+                 from src/compiler/glsl/ir.h:32:
+/usr/include/x86_64-linux-gnu/bits/local_lim.h:69: note: this is the location of the previous definition
+   69 | #define PTHREAD_DESTRUCTOR_ITERATIONS   _POSIX_THREAD_DESTRUCTOR_ITERATIONS
+      | 
+In file included from src/compiler/glsl/list.h:49,
+                 from src/compiler/glsl/ast.h:28:
+./src/compiler/shader_enums.h: In function ‘bool mesa_prim_has_adjacency(mesa_prim)’:
+./port/inc/assert.h:8:23: error: ‘_Static_assert’ was not declared in this scope; did you mean ‘static_assert’?
+    8 | #define static_assert _Static_assert
+      |                       ^~~~~~~~~~~~~~
+./src/compiler/shader_enums.h:1397:4: note: in expansion of macro ‘static_assert’
+ 1397 |    static_assert(MESA_PRIM_LINE_STRIP_ADJACENCY == MESA_PRIM_LINES_ADJACENCY + 1, "");
+      |    ^~~~~~~~~~~~~
+src/compiler/glsl/ast.h: In static member function ‘static void* ast_node::operator new(size_t, linear_ctx*)’:
+./port/inc/assert.h:8:23: error: ‘_Static_assert’ was not declared in this scope; did you mean ‘static_assert’?
+    8 | #define static_assert _Static_assert
+      |                       ^~~~~~~~~~~~~~
+./src/util/ralloc.h:575:7: note: in expansion of macro ‘static_assert’
+  575 |       static_assert(HAS_TRIVIAL_DESTRUCTOR(TYPE));                       \
+      |       ^~~~~~~~~~~~~
+./src/util/ralloc.h:590:4: note: in expansion of macro ‘DECLARE_LINEAR_ALLOC_CXX_OPERATORS_TEMPLATE’
+  590 |    DECLARE_LINEAR_ALLOC_CXX_OPERATORS_TEMPLATE(type, linear_zalloc_child)
+      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/compiler/glsl/ast.h:53:4: note: in expansion of macro ‘DECLARE_LINEAR_ZALLOC_CXX_OPERATORS’
+   53 |    DECLARE_LINEAR_ZALLOC_CXX_OPERATORS(ast_node);
+      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/compiler/glsl/ast.h: In static member function ‘static void* ast_node::operator new [](size_t, linear_ctx*)’:
+./port/inc/assert.h:8:23: error: ‘_Static_assert’ was not declared in this scope; did you mean ‘static_assert’?
+    8 | #define static_assert _Static_assert
+      |                       ^~~~~~~~~~~~~~
+./src/util/ralloc.h:582:7: note: in expansion of macro ‘static_assert’
+  582 |       static_assert(HAS_TRIVIAL_DESTRUCTOR(TYPE));                       \
+      |       ^~~~~~~~~~~~~
+./src/util/ralloc.h:590:4: note: in expansion of macro ‘DECLARE_LINEAR_ALLOC_CXX_OPERATORS_TEMPLATE’
+  590 |    DECLARE_LINEAR_ALLOC_CXX_OPERATORS_TEMPLATE(type, linear_zalloc_child)
+      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/compiler/glsl/ast.h:53:4: note: in expansion of macro ‘DECLARE_LINEAR_ZALLOC_CXX_OPERATORS’
+   53 |    DECLARE_LINEAR_ZALLOC_CXX_OPERATORS(ast_node);
+      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

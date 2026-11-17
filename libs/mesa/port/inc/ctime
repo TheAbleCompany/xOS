@@ -1,0 +1,20 @@
+#ifndef MESA_PORT_CTIME
+#define MESA_PORT_CTIME
+#ifdef __cplusplus
+#include <time.h>
+namespace std {
+using ::clock_t;
+using ::time_t;
+using ::tm;
+using ::clock;
+using ::difftime;
+using ::mktime;
+using ::time;
+using ::asctime;
+using ::ctime;
+using ::gmtime;
+using ::localtime;
+using ::strftime;
+}
+#endif
+#endif
