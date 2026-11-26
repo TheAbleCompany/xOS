@@ -294,6 +294,39 @@ static void st_net(void) {
         }
         serial_puts("[SELFTEST] net-stats done\n");
     }
+
+    /*
+     * Loopback-контроль: ping 127.0.0.1 через lo тем же путём,
+     * что syscall 213.  Отдельно от net-icmp-self: тот пингует
+     * собственный адрес физического интерфейса, а здесь нужен
+     * именно lo (иначе на машине без NIC ping 127.0.0.1 ломался).
+     */
+    {
+        extern ixn_netdev_t *ixn_netdev_get_loopback(void);
+        ixn_netdev_t *lo = ixn_netdev_get_loopback();
+        int got = 0;
+
+        if (lo) {
+            ixn_ping_reply_t rep;
+            ixn_u64 deadline = ixn_ticks_ms() + 1000u;
+
+            ixn_ping_flush();
+            if (ixn_icmp_send_echo(lo, 0x7F000001u, 0x4C4Fu, 1u,
+                                   (const ixn_u8 *)"loop", 4u) == 0) {
+                for (;;) {
+                    if (ixn_ping_get_reply(&rep) == 0) {
+                        if (rep.seq == 1u) { got = 1; break; }
+                    } else if (ixn_ticks_ms() >= deadline) {
+                        break;
+                    }
+                    ixn_netdev_poll_all(64u);
+                }
+            }
+        }
+
+        serial_puts(got ? "net-icmp-loop 1/1 replies\n"
+                        : "net-icmp-loop FAIL\n");
+    }
 }
 
 static void st_disk_rw(void) {

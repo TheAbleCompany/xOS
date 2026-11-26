@@ -41,23 +41,61 @@ int ixn_ping_get_reply(ixn_ping_reply_t *out) {
     return rc;
 }
 
-static void ixn_ping_push(ixn_u32 src_ip, ixn_u8 type, ixn_u8 code, ixn_u16 seq_be,
-                          ixn_u32 ttl, ixn_u32 size, ixn_u64 ts_ms) {
+int ixn_ping_get_reply_match(ixn_u16 id, ixn_u32 seq, ixn_ping_reply_t *out) {
+    ixn_u64 flags;
+    int rc = -1;
+    if (!out) return -1;
+    flags = ixn_irq_lock_acquire(&g_ixn_ping_lock);
+    if (g_ixn_ping_head != g_ixn_ping_tail) {
+        ixn_u32 n = (g_ixn_ping_tail + IXN_PING_QUEUE_SIZE - g_ixn_ping_head) % IXN_PING_QUEUE_SIZE;
+        ixn_u32 k, pos;
+        for (k = 0u; k < n; k++) {
+            ixn_u32 idx = (g_ixn_ping_head + k) % IXN_PING_QUEUE_SIZE;
+            ixn_ping_reply_t *e = &g_ixn_ping_queue[idx];
+            if (e->in_use && e->id == id && e->seq == seq) {
+                *out = *e;
+                /* Сдвигаем хвост очереди, затирая найденный слот: чужие
+                 * ответы остаются ждать своих владельцев. */
+                for (pos = k; pos + 1u < n; pos++) {
+                    ixn_u32 cur = (g_ixn_ping_head + pos) % IXN_PING_QUEUE_SIZE;
+                    ixn_u32 nxt = (g_ixn_ping_head + pos + 1u) % IXN_PING_QUEUE_SIZE;
+                    g_ixn_ping_queue[cur] = g_ixn_ping_queue[nxt];
+                }
+                g_ixn_ping_tail = (g_ixn_ping_tail + IXN_PING_QUEUE_SIZE - 1u) % IXN_PING_QUEUE_SIZE;
+                rc = 0;
+                break;
+            }
+        }
+    }
+    ixn_irq_lock_release(&g_ixn_ping_lock, flags);
+    return rc;
+}
+
+static void ixn_ping_push(ixn_u32 src_ip, ixn_u8 type, ixn_u8 code, ixn_u16 id_be,
+                          ixn_u16 seq_be, ixn_u32 ttl, ixn_u32 size, ixn_u64 ts_ms) {
     ixn_u64 flags = ixn_irq_lock_acquire(&g_ixn_ping_lock);
     ixn_u32 next = (g_ixn_ping_tail + 1u) % IXN_PING_QUEUE_SIZE;
     ixn_ping_reply_t *r;
-    if (next != g_ixn_ping_head) {
-        r = &g_ixn_ping_queue[g_ixn_ping_tail];
-        ixn_memset(r, 0, sizeof(*r));
-        r->in_use = 1u;
-        r->code = code;
-        r->src_ip = src_ip;
-        r->seq = (ixn_u32)IXN_ntohs(seq_be);
-        r->ttl = ttl;
-        r->size = size;
-        r->ts_ms = ts_ms;
-        g_ixn_ping_tail = next;
+    if (next == g_ixn_ping_head) {
+        /*
+         * Очередь полна: выталкиваем самый старый ответ, а не молча
+         * роняем самый свежий -- потеря только что пришедшего ответа
+         * ping засчитал бы как потерю пакета.
+         */
+        g_ixn_ping_head = (g_ixn_ping_head + 1u) % IXN_PING_QUEUE_SIZE;
     }
+    r = &g_ixn_ping_queue[g_ixn_ping_tail];
+    ixn_memset(r, 0, sizeof(*r));
+    r->in_use = 1u;
+    r->code = code;
+    r->src_ip = src_ip;
+    r->id = (ixn_u16)IXN_ntohs(id_be);
+    r->seq = (ixn_u32)IXN_ntohs(seq_be);
+    r->ttl = ttl;
+    r->size = size;
+    r->ts_ms = ts_ms;
+    g_ixn_ping_tail = next;
+    (void)type;
     ixn_irq_lock_release(&g_ixn_ping_lock, flags);
 }
 
@@ -265,6 +303,11 @@ int ixn_arp_ensure(ixn_netdev_t *dev, ixn_u32 dst_ip, ixn_u32 timeout_ms) {
             last_req = ixn_ticks_ms();
             (void)ixn_arp_resolve(dev, next_hop, mac); /* повторный запрос */
         }
+        /*
+         * Планировщик кооперативный: без уступания кванта этот цикл
+         * замораживал бы всю систему на время ожидания ARP.
+         */
+        if (ixn_yield_hook) ixn_yield_hook();
     }
 }
 
@@ -305,27 +348,16 @@ ixn_ipv4_hdr_t *ixn_ipv4_hdr(ixn_skb_t *skb) {
     return (ixn_ipv4_hdr_t *)ixn_skb_network_header(skb);
 }
 
-<<<<<<< HEAD
 int ixn_is_local_ip(ixn_netdev_t *dev, ixn_u32 dst_ip) {
     if (!dev) return 0;
     if (dst_ip == dev->ipv4_addr && dev->ipv4_addr != 0u) return 1;
-    if (dev->ipv4_broadcast != 0u && dst_ip == dev->ipv4_broadcast) return 1;
     /* 127/8 — всегда петлевой диапазон, адреса интерфейса там нет */
     if ((dst_ip & 0xFF000000u) == 0x7F000000u) return 1;
     return 0;
 }
 
-int ixn_ipv4_tx(ixn_netdev_t *dev, ixn_skb_t *skb, ixn_u32 dst_ip, ixn_u8 protocol) {
-    ixn_ipv4_hdr_t *iph;
-    ixn_u8 dst_mac[IXN_ETH_ALEN];
-    ixn_u32 next_hop;
-    ixn_u32 i;
-    if (!dev || !skb) return -1;
-
-=======
 static void ixn_ipv4_build_hdr(ixn_netdev_t *dev, ixn_skb_t *skb, ixn_u32 dst_ip, ixn_u8 protocol) {
     ixn_ipv4_hdr_t *iph;
->>>>>>> b1cd3f9 (Добавлен mkdir)
     ixn_skb_push(skb, IXN_IPV4_IHL_MIN * 4u);
     iph = (ixn_ipv4_hdr_t *)skb->data;
     iph->ver_ihl = (IXN_IPV4_VERSION << 4u) | IXN_IPV4_IHL_MIN;
@@ -347,36 +379,6 @@ static void ixn_ipv4_build_hdr(ixn_netdev_t *dev, ixn_skb_t *skb, ixn_u32 dst_ip
     iph->dst = IXN_htonl(dst_ip);
     iph->checksum = ixn_checksum16((const ixn_u8 *)iph, IXN_IPV4_IHL_MIN * 4u, 0u);
     ixn_skb_set_network_header(skb, (ixn_u32)(skb->data - skb->head));
-<<<<<<< HEAD
-
-    /* Локальная доставка: адрес свой или петлевой диапазон 127/8.
-     * Пакет не уходит в драйвер, а сразу разбирается стеком приёма —
-     * так работает loopback, даже если отдельного "lo" нет. */
-    if (ixn_is_local_ip(dev, dst_ip)) {
-        ixn_skb_t *rx = ixn_skb_clone(skb);
-        ixn_skb_free(skb);
-        if (!rx) return -2;
-        return ixn_eth_rx(dev, rx);
-    }
-
-    if (dst_ip == 0xFFFFFFFFu || (dst_ip & 0xF0000000u) == 0xE0000000u) {
-        for (i = 0u; i < IXN_ETH_ALEN; i++) dst_mac[i] = 0xFFu;
-    } else if (dev->type == IXN_NETDEV_TYPE_LOOPBACK) {
-        for (i = 0u; i < IXN_ETH_ALEN; i++) dst_mac[i] = dev->dev_addr[i];
-    } else {
-        if (dev->ipv4_addr != 0u && dev->ipv4_netmask != 0u &&
-            ((dst_ip & dev->ipv4_netmask) == (dev->ipv4_addr & dev->ipv4_netmask)))
-            next_hop = dst_ip;
-        else
-            next_hop = dev->ipv4_gateway ? dev->ipv4_gateway : dst_ip;
-        if (ixn_arp_resolve(dev, next_hop, dst_mac) != 0) {
-            /* ARP ещё не разрешён: стек не должен молча терять пакет.
-             * Отправитель (ping) дождётся ответа ARP и повторит запрос. */
-            ixn_skb_free(skb);
-            return -3;
-        }
-    }
-=======
 }
 
 int ixn_ipv4_tx(ixn_netdev_t *dev, ixn_skb_t *skb, ixn_u32 dst_ip, ixn_u8 protocol) {
@@ -387,17 +389,17 @@ int ixn_ipv4_tx(ixn_netdev_t *dev, ixn_skb_t *skb, ixn_u32 dst_ip, ixn_u8 protoc
 
     if (dst_ip == 0xFFFFFFFFu || (dst_ip & 0xF0000000u) == 0xE0000000u) {
         for (i = 0u; i < IXN_ETH_ALEN; i++) dst_mac[i] = 0xFFu;
-    } else if (dev->ipv4_addr != 0u &&
-               (dst_ip == dev->ipv4_addr ||
-                (ixn_netdev_is_loopback(dev) && (dst_ip & 0xFF000000u) == 0x7F000000u))) {
+    } else if (ixn_is_local_ip(dev, dst_ip)) {
         /*
-         * Собственный адрес (или любой 127/8 на loopback-устройстве):
-         * пакет не должен покидать систему.  Раньше он уходил в Ethernet
-         * на MAC самого себя, а loopback без start_xmit его ронял.
-         * Теперь собираем заголовок и сразу заворачиваем в rx того же
-         * устройства -- echo-request доходит до icmp_rx и отвечает сам
-         * себе.  Владение skb у rx-путей такое же, как у драйверов:
-         * обрабатываем и освобождаем здесь.
+         * Локальная доставка: адрес свой или петлевой диапазон 127/8.
+         * Пакет не уходит в драйвер, а сразу разбирается стеком приёма —
+         * так работает loopback, даже если отдельного "lo" нет, и ping
+         * собственного адреса не зависит от PHY.  Владение skb такое же,
+         * как у драйверов: rx-пути skb не освобождают, освобождаем здесь.
+         * Раньше здесь делали ixn_skb_clone и отдавали клон в eth_rx без
+         * освобождения -- один клон утекал на каждый loopback-пакет, пул
+         * из 256 skb кончался через ~128 пингов, и ping начинал терять
+         * 100% пакетов (send_echo не мог выделить буфер).
          */
         ixn_ipv4_build_hdr(dev, skb, dst_ip, protocol);
         rc = ixn_ipv4_rx(dev, skb);
@@ -405,15 +407,18 @@ int ixn_ipv4_tx(ixn_netdev_t *dev, ixn_skb_t *skb, ixn_u32 dst_ip, ixn_u8 protoc
         return rc;
     } else {
         if (ixn_arp_resolve(dev, ixn_route_next_hop(dev, dst_ip), dst_mac) != 0) {
-            /* MAC не разрешён (в т.ч. только что отправлен ARP-запрос):
-             * с неинициализированным dst_mac пакет на проводе гарантированно
-             * теряется -- дешевле сбросить и вернуться с ошибкой. */
+            /*
+             * MAC не разрешён (в т.ч. только что отправлен ARP-запрос):
+             * с неинициализированным dst_mac пакет на проводе
+             * гарантированно теряется -- дешевле сбросить и вернуться
+             * с ошибкой -3.  Отправитель (ping) дождётся ответа ARP
+             * и повторит запрос.
+             */
             ixn_skb_free(skb);
-            return -2;
+            return -3;
         }
     }
     ixn_ipv4_build_hdr(dev, skb, dst_ip, protocol);
->>>>>>> b1cd3f9 (Добавлен mkdir)
     return ixn_eth_tx(dev, skb, dst_mac, IXN_ETH_TYPE_IPV4);
 }
 
@@ -521,14 +526,14 @@ int ixn_icmp_rx(ixn_netdev_t *dev, ixn_skb_t *skb) {
     if (icmp->type == IXN_ICMP_ECHO_REPLY) {
         ixn_ipv4_hdr_t *orig_ip = (ixn_ipv4_hdr_t *)ixn_skb_network_header(skb);
         ixn_ping_push(orig_ip ? orig_ip->src : 0u, icmp->type, icmp->code,
-                      icmp->seq, orig_ip ? (ixn_u32)orig_ip->ttl : 0u,
+                      icmp->id, icmp->seq, orig_ip ? (ixn_u32)orig_ip->ttl : 0u,
                       skb->len, ixn_ticks_ms());
         return 0;
     }
     if (icmp->type == IXN_ICMP_DEST_UNREACH || icmp->type == IXN_ICMP_TIME_EXCEED) {
         ixn_ipv4_hdr_t *orig_ip = (ixn_ipv4_hdr_t *)ixn_skb_network_header(skb);
         ixn_ping_push(orig_ip ? orig_ip->src : 0u, icmp->type, icmp->code,
-                      0u, orig_ip ? (ixn_u32)orig_ip->ttl : 0u, skb->len, ixn_ticks_ms());
+                      0u, 0u, orig_ip ? (ixn_u32)orig_ip->ttl : 0u, skb->len, ixn_ticks_ms());
         return 0;
     }
     return 0;

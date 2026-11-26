@@ -9,6 +9,14 @@
 
 extern u64int limine_hhdm_offset;
 
+/*
+ * Hook кооперативного планировщика: длинные poll-циклы стека
+ * (ixn_arp_ensure, ping) между итерациями отдают квант остальным
+ * задачам.  Устанавливается ядром после initTasking() (kernel/main.c);
+ * до этого NULL -- стек крутится сам, как на раннем буте.
+ */
+void (*ixn_yield_hook)(void) = 0;
+
 void ixn_port_init(void) {
 }
 

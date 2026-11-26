@@ -3,6 +3,15 @@
 
 #include "ixn_types.h"
 
+/*
+ * Кооперативный планировщик: сетевой стек крутит длинные poll-циклы
+ * (arp_ensure, ping-ожидание) в контексте задачи.  Чтобы не замораживать
+ * систему, между итерациями драйвер дёргает этот hook.  Ставится в
+ * yield() после initTasking(); до планировщика (selftest на раннем
+ * буте) остаётся NULL -- тогда стек просто крутится, как раньше.
+ */
+extern void (*ixn_yield_hook)(void);
+
 void  ixn_port_init(void);
 
 ixn_u64 ixn_ticks_ms(void);

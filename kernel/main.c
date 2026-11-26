@@ -23,6 +23,7 @@
 void ax_selftest_run(void);
 void ax_mm_report(const char *tag);
 #include "../drivers/net/ixn_net.h"
+#include "../drivers/net/ixn_kernel_port.h"
 #include "../drivers/disk.h"
 #include "../drivers/blkdev.h"
 #include "../drivers/pcix.h"
@@ -916,7 +917,14 @@ xhci_init();
  
 boot_stage("stage: tasking init");
 initTasking();
- 
+
+/*
+ * Планировщик кооперативный и теперь готов: сетевой стек (arp_ensure,
+ * ping-ожидание) отдаёт квант остальным задачам в длинных poll-циклах,
+ * а не крутится на ядре, замораживая терминал и десктоп.
+ */
+ixn_yield_hook = yield;
+
 boot_stage("stage: launching wserver (GUI)...");
  
 /*

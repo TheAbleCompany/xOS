@@ -32,12 +32,20 @@ static inline long __syscall(long n, long a1, long a2, long a3, long a4, long a5
         return (long)ret;
 #else
 
-        /*__asm__ __volatile__ ("syscall" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2),
-                                                  "d"(a3), "r"(r10), "r"(r8), "r"(r9) : "rcx", "r11", "memory");
-        */
-        // Надо (ваша ОС, int $0x80):
-        __asm__ __volatile__ ("int $0x80" : "=a"(ret) : "a"(n), "D"(a1), "S"(a2),
-                      "d"(a3), "c"(a4), "r"(a5) : "memory");
+        /*
+         * Родной ABI ArtyomX64 (int $0x80): номер в rax, аргументы
+         * rdi, rsi, rdx, r10, r8, r9 -- как в Linux x86-64.  Раньше
+         * 4-й аргумент клали в rcx: ядро читает r10, поэтому
+         * syscall'ы с указателем в 4-м аргументе (213 ping) получали
+         * мусор и сразу возвращали -1.
+         */
+        register long r10 __asm__("r10") = a4;
+        register long r8  __asm__("r8")  = a5;
+        register long r9  __asm__("r9")  = a6;
+
+        __asm__ __volatile__ ("int $0x80" : "=a"(ret)
+                      : "a"(n), "D"(a1), "S"(a2), "d"(a3),
+                        "r"(r10), "r"(r8), "r"(r9) : "memory");
         return ret;
 #endif
 }

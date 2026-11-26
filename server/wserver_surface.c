@@ -917,6 +917,7 @@ static void h_surface(const ax_msg_t *m)
 static void h_commit(const ax_msg_t *m)
 {
     ax_surface_win *s = surf_by_token(m->win);
+
     if (s) s->dirty = true;
 }
 

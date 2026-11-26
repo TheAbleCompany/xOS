@@ -130,10 +130,15 @@ typedef struct {
     ixn_u32 seq;
     ixn_u32 ttl;
     ixn_u32 size;
+    ixn_u16 id;     /* ICMP id в host order -- матчинг id+seq, как в Linux */
+    ixn_u16 _pad2;
     ixn_u64 ts_ms;
 } ixn_ping_reply_t;
 
 int ixn_ping_get_reply(ixn_ping_reply_t *out);
+/* Забрать из очереди ответ, совпадающий по id И seq, не трогая чужие
+ * ответы (параллельные ping-процессы не крадут пакеты друг у друга). */
+int ixn_ping_get_reply_match(ixn_u16 id, ixn_u32 seq, ixn_ping_reply_t *out);
 void ixn_ping_flush(void);
 
 ixn_u32 ixn_ipv4_parse_str(const char *s);

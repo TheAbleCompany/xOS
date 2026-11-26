@@ -1,6 +1,7 @@
 #include "../lib/libax.h"
 #include "../lib/unistd.h"
 
+
 /* ============================================================
  * The app's OWN menu bar (macOS model: menus belong to the
  * application).  Clicks arrive as AX_EV_MENU
@@ -30,9 +31,9 @@ static int  sb_count = 0;
 static char cmdline[LINE_LEN];
 static int  cl_len = 0;
 
-/* r14-temufix: POSIX-эмуляция Backspace. BS сам ничего не стирает,
- * а старый drain_pty лишь уменьшал счётчик, поэтому "BS SP BS"
- * от line discipline оставлял стёртый символ на экране навсегда. */
+/* r14-temufix: POSIX-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ Backspace. BS пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ,
+ * пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ drain_pty пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ "BS SP BS"
+ * пїЅпїЅ line discipline пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. */
 static int  bs_pending = 0;
 
 
@@ -107,7 +108,7 @@ static void drain_pty(void)
                 pty_line_len = 0;
                 bs_pending = 0;
             } else if (c == '\b') {
-                /* BS ставит перезапись на этот символ; сам стирает следующий. */
+                /* BS пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ; пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. */
                 if (pty_line_len > 0) pty_line_len--;
                 if (pty_line_len < LINE_LEN - 1) pty_line[pty_line_len] = 0;
                 bs_pending = 1;
@@ -117,7 +118,7 @@ static void drain_pty(void)
                 if (pty_line_len >= TERM_COLS)
                     wrap_line();       /* СЃС‚СЂРѕРєР° Р·Р°РїРѕР»РЅРёР»Р°СЃСЊ -- РїРµСЂРµРЅРѕСЃ */
                 if (bs_pending) {
-                    /* POSIX: после BS пробел гасит символ, второй BS снимает режим. */
+                    /* POSIX: пїЅпїЅпїЅпїЅпїЅ BS пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ BS пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ. */
                     if (c == ' ') { bs_pending = 0; continue; }
                     bs_pending = 0;
                 }
@@ -381,8 +382,8 @@ void _start(void *raw_args)
                 continue;
             }
             if (ev.type == AX_EV_KEY) {
-                /* r14-temufix: '\r' -- это тот же Enter (и от терминала, и от
-                   AX_KEY_ENTER); раньше он попадал в command line как CR. */
+                /* r14-temufix: '\r' -- пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅ Enter (пїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅ
+                   AX_KEY_ENTER); пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ command line пїЅпїЅпїЅ CR. */
                 if (ev.key == '\r')
                     ev.key = '\n';
                 if (!fg_pid) {
@@ -412,8 +413,8 @@ void _start(void *raw_args)
                     uint8_t kb[2];
                     int kn = 0;
                     kb[kn++] = (uint8_t)ev.key;
-                    /* r14-temufix: Enter -> '\n' + '\r'; pty нормализует оба,
-                       а без CR строки дочернего процесса не завершались. */
+                    /* r14-temufix: Enter -> '\n' + '\r'; pty пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ,
+                       пїЅ пїЅпїЅпїЅ CR пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. */
                     if (ev.key == '\n')
                         kb[kn++] = '\r';
                     ax_term_write(g_canvas, kb, (uint32_t)kn);
