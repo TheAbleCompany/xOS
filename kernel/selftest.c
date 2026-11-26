@@ -27,6 +27,7 @@ int unlink(const char *path);
 #include "../drivers/net/ixn_netdev.h"
 #include "../drivers/net/ixn_l2l3.h"
 #include "../drivers/net/ixn_compat.h"
+#include "isr.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -326,6 +327,33 @@ static void st_net(void) {
 
         serial_puts(got ? "net-icmp-loop 1/1 replies\n"
                         : "net-icmp-loop FAIL\n");
+    }
+
+    /*
+     * Контроль самого syscall 213 (без userspace): тот же путь,
+     * что у ping, с out-буфером в ядре.  Ловит ошибки разбора
+     * аргументов (r10) и выбора loopback-устройства.
+     */
+    {
+        extern void syscall_native_handler(registers_t *regs);
+        registers_t regs;
+        int64_t out[6];
+
+        memset(&regs, 0, sizeof(regs));
+        memset(out, 0, sizeof(out));
+        regs.rax = 213;
+        regs.rdi = (uint64_t)(uintptr_t)"127.0.0.1";
+        regs.rsi = 1;
+        regs.rdx = 1000;
+        regs.r10 = (uint64_t)(uintptr_t)out;
+
+        syscall_native_handler(&regs);
+
+        serial_puts("[SELFTEST] ping-syscall rc=");
+        debug_putnum((uint64_t)regs.rax);
+        serial_puts(" got=");
+        debug_putnum((uint64_t)out[0]);
+        serial_puts("\n");
     }
 }
 
