@@ -107,36 +107,68 @@ static ixn_u8 g_ixn_boot_dhcp_done = 0u;
 
 int ixn_net_dhcp_blocking(ixn_u32 timeout_ms) {
     ixn_netdev_t *dev;
-    ixn_u64 deadline;
+    ixn_u32 i;
+    ixn_u32 per_dev = (timeout_ms ? timeout_ms : 8000u) / 2u;
 
     if (g_ixn_boot_dhcp_done) return 0;
+    if (per_dev < 1500u) per_dev = 1500u;
+    if (per_dev > 4000u) per_dev = 4000u;
 
-    dev = ixn_netdev_get_default();
-    if (!dev) return -1;
-    if (ixn_netdev_open(dev) != 0) return -2;
+    /*
+     * Пробуем DHCP на всех физических интерфейсах, а не только на
+     * default.  У VM бывает два NIC (bridged + NAT): первый может
+     * быть UP, но не отдавать шлюз/ARP, и тогда единственный шанс
+     * выйти в сеть -- второй.
+     */
+    for (i = 0u; i < IXN_NETDEV_MAX; i++) {
+        ixn_u64 deadline;
 
-    ixn_dhcp_init(&g_ixn_boot_dhcp, dev);
-    ixn_dhcp_set_hook(&g_ixn_boot_dhcp);
+        dev = ixn_netdev_get_by_index(i);
+        if (!dev || dev->type == IXN_NETDEV_TYPE_LOOPBACK) continue;
+        if (ixn_netdev_open(dev) != 0) continue;
 
-    if (ixn_dhcp_discover(&g_ixn_boot_dhcp) != 0) return -3;
+        ixn_dhcp_init(&g_ixn_boot_dhcp, dev);
+        ixn_dhcp_set_hook(&g_ixn_boot_dhcp);
 
-    deadline = ixn_ticks_ms() + (ixn_u64)(timeout_ms ? timeout_ms : 8000u);
+        if (ixn_dhcp_discover(&g_ixn_boot_dhcp) != 0) {
+            ixn_dhcp_set_hook(0);
+            continue;
+        }
 
-    while (ixn_ticks_ms() < deadline &&
-           g_ixn_boot_dhcp.state != IXN_DHCP_STATE_BOUND) {
-        ixn_netdev_poll_all(IXN_NETDEV_RX_BUDGET);
-        ixn_dhcp_tick(&g_ixn_boot_dhcp);
-        ixn_pause();
+        deadline = ixn_ticks_ms() + (ixn_u64)per_dev;
+        while (ixn_ticks_ms() < deadline &&
+               g_ixn_boot_dhcp.state != IXN_DHCP_STATE_BOUND) {
+            ixn_netdev_poll_all(IXN_NETDEV_RX_BUDGET);
+            ixn_dhcp_tick(&g_ixn_boot_dhcp);
+            ixn_pause();
+        }
+
+        if (g_ixn_boot_dhcp.state != IXN_DHCP_STATE_BOUND) {
+            ixn_dhcp_set_hook(0);
+            continue;
+        }
+
+        /*
+         * DHCP ответил, но шлюз может быть недоступен (типично для
+         * bridged поверх Wi-Fi).  Без ARP шлюза удалённый ping всё
+         * равно не уйдёт, поэтому отдаём предпочтение следующему NIC.
+         */
+        if (g_ixn_boot_dhcp.router != 0u &&
+            ixn_arp_ensure(dev, g_ixn_boot_dhcp.router, 700u) != 0) {
+            ixn_netdev_set_ipv4(dev, 0u, 0u, 0u);
+            ixn_dhcp_set_hook(0);
+            continue;
+        }
+
+        ixn_netdev_set_default(dev);
+        g_ixn_boot_dhcp_done = 1u;
+        return 0;
     }
 
-    if (g_ixn_boot_dhcp.state != IXN_DHCP_STATE_BOUND) {
-        ixn_dhcp_set_hook(0);
-        return -4;
-    }
-
-    g_ixn_boot_dhcp_done = 1u;
-    return 0;
+    ixn_dhcp_set_hook(0);
+    return -4;
 }
+
 
 int ixn_net_dhcp_configured(ixn_u32 *out_ip, ixn_u32 *out_mask, ixn_u32 *out_gw, ixn_u32 *out_dns) {
     if (!g_ixn_boot_dhcp_done) return 0;

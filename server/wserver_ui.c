@@ -659,19 +659,33 @@ static int ity(void)
 
 /*
  * Shared Lion drop-down panel: heavy soft shadow, frosted blur of
- * the backdrop, translucent white vertical gradient, ~10px rounded
+ * the backdrop, translucent white vertical gradient, ~6px rounded
  * corners and a hairline border (the REAL 10.7 menu look).
  * Alpha-blended rounded primitives -- never raw gfx_hline.
  */
 static void draw_menu_panel(int mx0, int my0, int mw, int mh)
 {
-    gfx_soft_shadow(mx0, my0 - 2, mw, mh + 8, 16, 5);
+    gfx_soft_shadow(mx0, my0 - 2, mw, mh + 8, 12, 5);
     gfx_blur_region(mx0 + 4, my0 + 4, mw - 8, mh - 8, 3);
-    gfx_rounded_vgradient_alpha(mx0, my0, mw, mh, 10,
+    gfx_rounded_vgradient_alpha(mx0, my0, mw, mh, 6,
                                 LION_MENU_BG_TOP, LION_MENU_BG_BOT);
-    gfx_rounded_outline(mx0, my0, mw, mh, 10, LION_MENU_BORDER);
-    gfx_rounded_outline(mx0 + 1, my0 + 1, mw - 2, mh - 2, 9,
+    gfx_rounded_outline(mx0, my0, mw, mh, 6, LION_MENU_BORDER);
+    gfx_rounded_outline(mx0 + 1, my0 + 1, mw - 2, mh - 2, 5,
                         ARGB(0x55,255,255,255));
+}
+
+/*
+ * Dropdown of the menu bar: its top edge is flush with the bar,
+ * so only the bottom corners are rounded (as in the CSS replica),
+ * and the shadow falls downward only.
+ */
+static void draw_bar_menu_panel(int mx0, int my0, int mw, int mh)
+{
+    gfx_soft_shadow(mx0, my0 + 1, mw, mh + 6, 12, 5);
+    gfx_blur_region(mx0 + 4, my0 + 4, mw - 8, mh - 8, 3);
+    gfx_menu_panel(mx0, my0, mw, mh, 6,
+                   LION_MENU_BG_TOP, LION_MENU_BG_BOT, LION_MENU_BORDER);
+    gfx_fill_rect_alpha(mx0 + 2, my0 + 1, mw - 4, 1, ARGB(0x55,255,255,255));
 }
 
 /* width of a dropdown for the given menu */
@@ -737,7 +751,7 @@ void draw_menubar(void)
 
                 if (mx0 + mw > scr_w) mx0 = scr_w - mw - 2;
 
-                draw_menu_panel(mx0, my0, mw, mh);
+                draw_bar_menu_panel(mx0, my0, mw, mh);
 
                 for (int j = 0; j < menus[0].item_count; j++) {
                     int iy = my0 + 4 + j * AX_MENU_ITEM_H;
@@ -745,9 +759,9 @@ void draw_menubar(void)
                                  mouse.y >= iy && mouse.y < iy + AX_MENU_ITEM_H;
                     if (ihover) {
                         draw_blue_highlight(mx0 + 4, iy, mw - 8, AX_MENU_ITEM_H);
-                        gfx_text(menus[0].items[j], mx0 + 12, iy + ity(), RGB(255,255,255));
+                        gfx_text(menus[0].items[j], mx0 + 14, iy + ity(), RGB(255,255,255));
                     } else {
-                        gfx_text(menus[0].items[j], mx0 + 12, iy + ity(), LION_MENU_TEXT);
+                        gfx_text(menus[0].items[j], mx0 + 14, iy + ity(), LION_MENU_TEXT);
                     }
                 }
             }
@@ -756,15 +770,16 @@ void draw_menubar(void)
         bool hover = mouse.x >= menus[i].x_pos && mouse.x < menus[i].x_pos + menus[i].w &&
                      mouse.y >= 0 && mouse.y < AX_MENUBAR_H;
 
-        /* square title highlight, blue gradient like the items */
-        if (menus[i].open)
-            draw_blue_highlight(menus[i].x_pos - 6, 2, menus[i].w + 8,
-                                AX_MENUBAR_H - 4);
-        else if (hover)
+        /*
+         * Lion: the bar item under the cursor (or with an open menu)
+         * gets a soft dark wash and the text stays black -- no blue
+         * pill, that's the CSS replica's .mb-item:hover/.open rule.
+         */
+        if (menus[i].open || hover)
             gfx_fill_rect_alpha(menus[i].x_pos - 6, 2, menus[i].w + 8, AX_MENUBAR_H - 4,
-                                ARGB(0x46,0,0,0));
+                                ARGB(0x29,0,0,0));
 
-        uint32_t color = (menus[i].open || hover) ? RGB(255,255,255) : LION_MBAR_TEXT;
+        uint32_t color = LION_MBAR_TEXT;
 
         /*
          * The frontmost app's name is the "bold app menu" cue:
@@ -772,9 +787,9 @@ void draw_menubar(void)
          */
         if (menus[i].label) {
             int ty = (AX_MENUBAR_H - gfx_font_h() + 1) / 2;
-            if (i == 1 && app_active && !menus[i].open && !hover) {
-                gfx_text(menus[i].label, menus[i].x_pos,     ty, RGB(15,15,18));
-                gfx_text(menus[i].label, menus[i].x_pos + 1, ty, RGB(15,15,18));
+            if (i == 1 && app_active) {
+                gfx_text(menus[i].label, menus[i].x_pos,     ty, color);
+                gfx_text(menus[i].label, menus[i].x_pos + 1, ty, color);
             } else {
                 gfx_text(menus[i].label, menus[i].x_pos, ty, color);
             }
@@ -789,7 +804,7 @@ void draw_menubar(void)
 
             if (mx0 + mw > scr_w) mx0 = scr_w - mw - 2;
 
-            draw_menu_panel(mx0, my0, mw, mh);
+            draw_bar_menu_panel(mx0, my0, mw, mh);
 
             for (int j = 0; j < menus[i].item_count; j++) {
                 int iy = my0 + 4 + j * AX_MENU_ITEM_H;
@@ -797,9 +812,9 @@ void draw_menubar(void)
                               mouse.y >= iy && mouse.y < iy + AX_MENU_ITEM_H;
                 if (ihover) {
                     draw_blue_highlight(mx0 + 4, iy, mw - 8, AX_MENU_ITEM_H);
-                    gfx_text(menus[i].items[j], mx0 + 12, iy + ity(), RGB(255,255,255));
+                    gfx_text(menus[i].items[j], mx0 + 14, iy + ity(), RGB(255,255,255));
                 } else {
-                    gfx_text(menus[i].items[j], mx0 + 12, iy + ity(), LION_MENU_TEXT);
+                    gfx_text(menus[i].items[j], mx0 + 14, iy + ity(), LION_MENU_TEXT);
                 }
             }
         }
@@ -1608,9 +1623,9 @@ void draw_context_menu(void)
         if (mouse.x >= cx && mouse.x < cx + CTX_W &&
             mouse.y >= iy && mouse.y < iy + CTX_ITEM_H) {
             draw_blue_highlight(cx + 4, iy, CTX_W - 8, CTX_ITEM_H);
-            gfx_text(ctx_items[i], cx + 12, iy + ity(), RGB(255,255,255));
+            gfx_text(ctx_items[i], cx + 14, iy + ity(), RGB(255,255,255));
         } else {
-            gfx_text(ctx_items[i], cx + 12, iy + ity(), LION_MENU_TEXT);
+            gfx_text(ctx_items[i], cx + 14, iy + ity(), LION_MENU_TEXT);
         }
     }
 }

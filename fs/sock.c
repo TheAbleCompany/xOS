@@ -465,7 +465,9 @@ int ax_sock_sendto(int fd, const void *buf, uint32_t len, uint32_t flags,
     }
 
     if (s->kind == AX_KIND_INET) {
-        if (addr && addr->sa_family == AX_AF_INET && (s->net == 0 || s->net->type == IXN_SOCK_TYPE_UDP)) {
+        if (addr && addr->sa_family == AX_AF_INET &&
+            (s->net == 0 || s->net->type == IXN_SOCK_TYPE_UDP ||
+             s->net->type == IXN_SOCK_TYPE_RAW)) {
             const ax_sockaddr_in_t *in = (const ax_sockaddr_in_t *)addr;
             return ixn_api_sendto(s->net_fd, (const ixn_u8 *)buf, len, flags, in);
         }

@@ -36,8 +36,8 @@ static inline long __syscall(long n, long a1, long a2, long a3, long a4, long a5
          * Родной ABI ArtyomX64 (int $0x80): номер в rax, аргументы
          * rdi, rsi, rdx, r10, r8, r9 -- как в Linux x86-64.  Раньше
          * 4-й аргумент клали в rcx: ядро читает r10, поэтому
-         * syscall'ы с указателем в 4-м аргументе (213 ping) получали
-         * мусор и сразу возвращали -1.
+         * syscall'ы с указателем в 4-м аргументе (sendto/recvfrom)
+         * получали мусор и сразу возвращали -1.
          */
         register long r10 __asm__("r10") = a4;
         register long r8  __asm__("r8")  = a5;

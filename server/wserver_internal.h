@@ -76,8 +76,8 @@ int  u_close(int fd);
  */
 
 /* menu bar (translucent light bar over the blurred wallpaper) */
-#define LION_MBAR_TOP      ARGB(0xC8,250,250,252)
-#define LION_MBAR_BOT      ARGB(0xBE,225,225,231)
+#define LION_MBAR_TOP      ARGB(0xDB,248,248,248)
+#define LION_MBAR_BOT      ARGB(0xCC,228,228,228)
 #define LION_MBAR_TEXT     RGB(45,45,50)
 #define LION_MBAR_TEXT_DIM RGB(120,120,128)
 #define LION_MBAR_SHADOW   ARGB(0x50,0,0,0)
@@ -91,10 +91,10 @@ int  u_close(int fd);
 
 /* selected-item highlight: the blue vertical gradient of the
  * Lion CSS3 reconstruction (items AND open menu-bar titles) */
-#define LION_MENU_HL_TOP   RGB(119,147,245)   /* #7793F5 */
-#define LION_MENU_HL_MID   RGB(64,109,242)    /* #406DF2 */
-#define LION_MENU_HL_BOT   RGB(39,90,241)     /* #275AF1 */
-#define LION_MENU_HL_EDGE  RGB(23,70,215)     /* #1746D7 */
+#define LION_MENU_HL_TOP   RGB(106,165,240)   /* #6AA5F0 */
+#define LION_MENU_HL_MID   RGB(85,148,237)    /* #5594ED */
+#define LION_MENU_HL_BOT   RGB(63,131,234)    /* #3F83EA */
+#define LION_MENU_HL_EDGE  RGB(44,107,203)    /* #2C6BCB */
 
 /*
  * Window titlebar (brushed-metal light gradient).
@@ -103,9 +103,11 @@ int  u_close(int fd);
  * rgba(0,0,0,.3); неактивное окно светлее и холоднее.
  */
 #define LION_TITLE_F_TOP   RGB(233,233,233)   /* #E9E9E9 */
-#define LION_TITLE_F_BOT   RGB(178,178,178)   /* #B2B2B2 */
-#define LION_TITLE_U_TOP   RGB(238,238,240)
-#define LION_TITLE_U_BOT   RGB(214,214,220)
+#define LION_TITLE_F_BOT   RGB(210,210,210)   /* #D2D2D2 -- середина .chrome, тулбар продолжает градиент */
+/* Неактивная шапка светлее сверху, но заканчивается ТЕМ ЖЕ цветом,
+ * что и тулбар приложения: иначе в неактивном окне виден шов. */
+#define LION_TITLE_U_TOP   RGB(242,242,244)
+#define LION_TITLE_U_BOT   RGB(210,210,210)
 #define LION_TITLE_TEXT    RGB(60,60,60)      /* #3C3C3C */
 #define LION_TITLE_TEXT_U  RGB(150,150,158)
 #define LION_FRAME_EDGE    ARGB(0x4D,0,0,0)   /* rgba(0,0,0,.3) */
@@ -167,7 +169,7 @@ int  u_close(int fd);
 #define AX_BTN_C3     59
 
 /* Height of one drop-down menu item (shared draw + click paths). */
-#define AX_MENU_ITEM_H 20
+#define AX_MENU_ITEM_H 22
 
 /*
  * ============================================================
@@ -222,6 +224,9 @@ void lion_overlays_draw(void);
 #define AX_TITLEBAR_H  28
 #define AX_MENUBAR_H   24
 #define AX_DOCK_H      56
+/* Радиус скругления окна: заголовок, контур и обрезка тела окна
+ * должны совпадать, иначе на стыке появляется ступенька. */
+#define AX_WIN_RADIUS  10
 
 typedef struct {
     int  x, y;

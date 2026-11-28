@@ -49,8 +49,13 @@ void gfx_vgradient(int x, int y, int w, int h, uint32_t top, uint32_t bottom);
 void gfx_vgradient_alpha(int x, int y, int w, int h, uint32_t top, uint32_t bottom);
 void gfx_rounded_vgradient(int x, int y, int w, int h, int radius,
                            uint32_t top, uint32_t bottom);
+void gfx_vgradient_top_rounded(int x, int y, int w, int h, int radius,
+                               uint32_t top, uint32_t bottom);
 void gfx_rounded_vgradient_alpha(int x, int y, int w, int h, int radius,
                                  uint32_t top, uint32_t bottom);
+/* Панель меню-бара: верхние углы прямые, нижние скруглены. */
+void gfx_menu_panel(int x, int y, int w, int h, int radius,
+                    uint32_t top_argb, uint32_t bot_argb, uint32_t edge_argb);
 
 /* Lion/Aqua primitives (v5 Aqua edition) -- зеркала axquartz.h */
 void gfx_gloss_circle(int cx, int cy, int r,
@@ -75,6 +80,11 @@ void gfx_font_selftest(void);
 
 void gfx_blit_argb(const uint32_t *src, int sw, int sh, int dx, int dy);
 void gfx_blit_argb_scaled(const uint32_t *src, int sw, int sh, int dx, int dy, int dw, int dh);
+/* Блит со срезанными нижними углами: пиксели вне скругления не трогаются,
+ * поэтому под ними остаётся то, что было нарисовано раньше (обои или окно
+ * ниже по z-order). Верхние углы не скругляются -- их закрывает заголовок. */
+void gfx_blit_argb_round_bottom(const uint32_t *src, int sw, int sh,
+                                int dx, int dy, int dw, int dh, int radius);
 
 uint32_t gfx_blend(uint32_t dst, uint32_t src_argb);
 uint32_t gfx_lerp_color(uint32_t a, uint32_t b, int t256);

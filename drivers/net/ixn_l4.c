@@ -34,9 +34,17 @@ ixn_u16 ixn_l4_checksum(ixn_u32 src_ip, ixn_u32 dst_ip, ixn_u8 protocol, const i
 ixn_socket_t *ixn_socket_alloc(ixn_sock_type_t type) {
     ixn_u64 flags;
     ixn_u32 i;
+    ixn_u32 base = 0u;
     ixn_u32 cap = (type == IXN_SOCK_TYPE_UDP) ? (IXN_TCP_MAX_SOCKETS + IXN_UDP_MAX_SOCKETS) : IXN_TCP_MAX_SOCKETS;
+    /*
+     * UDP живёт во второй половине пула: ixn_udp_find() ищет сокеты
+     * начиная с IXN_TCP_MAX_SOCKETS.  Раньше аллокатор мог выдать UDP
+     * слот из первой половины, и ответы (DHCP-резолвер, userspace
+     * recvfrom) до сокета не доходили.
+     */
+    if (type == IXN_SOCK_TYPE_UDP) base = IXN_TCP_MAX_SOCKETS;
     flags = ixn_irq_lock_acquire(&g_ixn_sock_lock);
-    for (i = 0u; i < cap; i++) {
+    for (i = base; i < cap; i++) {
         if (!g_ixn_sockets[i].in_use) {
             ixn_socket_t *s = &g_ixn_sockets[i];
             ixn_memset(s, 0, sizeof(*s));
@@ -181,6 +189,35 @@ int ixn_udp_socket_recv(ixn_socket_t *s, ixn_u32 *out_src_ip, ixn_u16 *out_src_p
     uh = (ixn_udp_hdr_t *)(ixn_skb_network_header(skb) + ixn_ipv4_hdr_len(iph));
     if (out_src_ip) *out_src_ip = iph->src;
     if (out_src_port) *out_src_port = IXN_ntohs(uh->src);
+    copy = skb->len < cap ? skb->len : cap;
+    if (buf && copy) ixn_memcpy(buf, skb->data, copy);
+    ixn_skb_free(skb);
+    return (int)copy;
+}
+
+int ixn_icmp_socket_push(ixn_skb_t *skb) {
+    ixn_u32 i;
+    if (!skb) return -1;
+    for (i = 0u; i < IXN_TCP_MAX_SOCKETS + IXN_UDP_MAX_SOCKETS; i++) {
+        ixn_socket_t *s = &g_ixn_sockets[i];
+        ixn_skb_t *q;
+        if (!s->in_use || s->type != IXN_SOCK_TYPE_RAW) continue;
+        q = ixn_skb_clone(skb);
+        if (!q) continue;
+        ixn_skb_queue_push(&s->rx_queue, q);
+        s->rx_queue_len++;
+        s->last_activity = ixn_ticks_ms();
+    }
+    return 0;
+}
+
+int ixn_icmp_socket_recv(ixn_socket_t *s, ixn_u8 *buf, ixn_u32 cap) {
+    ixn_skb_t *skb;
+    ixn_u32 copy;
+    if (!s || s->type != IXN_SOCK_TYPE_RAW) return -1;
+    skb = ixn_skb_queue_pop(&s->rx_queue);
+    if (!skb) return -2;
+    s->rx_queue_len--;
     copy = skb->len < cap ? skb->len : cap;
     if (buf && copy) ixn_memcpy(buf, skb->data, copy);
     ixn_skb_free(skb);

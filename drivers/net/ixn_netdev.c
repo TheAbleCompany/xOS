@@ -168,6 +168,16 @@ ixn_netdev_t *ixn_netdev_get_loopback(void) {
 
 ixn_netdev_t *ixn_netdev_get_first_up(void) {
     ixn_u32 i;
+    /*
+     * Сначала -- устройство с настроенным IPv4.  При двух NIC первый
+     * (например, bridged поверх Wi-Fi) может быть UP, но без адреса:
+     * DHCP ушёл на второй, и выбирать первый для DNS/отправки нельзя.
+     */
+    for (i = 0u; i < IXN_NETDEV_MAX; i++) {
+        ixn_netdev_t *d = g_ixn_netdevs[i];
+        if (d && (d->flags & IXN_NETDEV_FLAG_UP) &&
+            d->type != IXN_NETDEV_TYPE_LOOPBACK && d->ipv4_addr != 0u) return d;
+    }
     for (i = 0u; i < IXN_NETDEV_MAX; i++) {
         ixn_netdev_t *d = g_ixn_netdevs[i];
         if (d && (d->flags & IXN_NETDEV_FLAG_UP) && d->type != IXN_NETDEV_TYPE_LOOPBACK) return d;

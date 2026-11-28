@@ -118,28 +118,8 @@ int ixn_is_local_ip(ixn_netdev_t *dev, ixn_u32 dst_ip);
 int ixn_icmp_rx(ixn_netdev_t *dev, ixn_skb_t *skb);
 int ixn_icmp_send_echo(ixn_netdev_t *dev, ixn_u32 dst_ip, ixn_u16 id, ixn_u16 seq, const ixn_u8 *data, ixn_u32 data_len);
 int ixn_icmp_send(ixn_netdev_t *dev, ixn_u32 dst_ip, ixn_u8 type, ixn_u8 code, const ixn_u8 *payload, ixn_u32 payload_len);
-
-/* --- ping: приём эхо-ответов, как ядро Linux отдаёт их raw-сокету --- */
-#define IXN_PING_QUEUE_SIZE 16u
-
-typedef struct {
-    ixn_u8  in_use;
-    ixn_u8  code;
-    ixn_u8  _pad[2];
-    ixn_u32 src_ip;
-    ixn_u32 seq;
-    ixn_u32 ttl;
-    ixn_u32 size;
-    ixn_u16 id;     /* ICMP id в host order -- матчинг id+seq, как в Linux */
-    ixn_u16 _pad2;
-    ixn_u64 ts_ms;
-} ixn_ping_reply_t;
-
-int ixn_ping_get_reply(ixn_ping_reply_t *out);
-/* Забрать из очереди ответ, совпадающий по id И seq, не трогая чужие
- * ответы (параллельные ping-процессы не крадут пакеты друг у друга). */
-int ixn_ping_get_reply_match(ixn_u16 id, ixn_u32 seq, ixn_ping_reply_t *out);
-void ixn_ping_flush(void);
+/* raw-сокет: ICMP-сообщение целиком собрано в userspace; checksum считает стек */
+int ixn_icmp_send_raw(ixn_netdev_t *dev, ixn_u32 dst_ip, const ixn_u8 *pkt, ixn_u32 len);
 
 ixn_u32 ixn_ipv4_parse_str(const char *s);
 int ixn_ipv4_format_str(ixn_u32 ip, char *out, ixn_u32 cap);

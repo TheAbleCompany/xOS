@@ -34,8 +34,8 @@
  * ============================================================ */
 
 /* --- window body --- */
-#define AQ_WIN_BG_TOP     AX_ARGB(0xFF, 0xF2, 0xF2, 0xF6)
-#define AQ_WIN_BG_BOT     AX_ARGB(0xFF, 0xE2, 0xE2, 0xEA)
+#define AQ_WIN_BG_TOP     AX_ARGB(0xFF, 0xEF, 0xEF, 0xEF)
+#define AQ_WIN_BG_BOT     AX_ARGB(0xFF, 0xEC, 0xEC, 0xEC)
 #define AQ_CONTENT_BG     AX_RGB(255, 255, 255)   /* paper / list area */
 #define AQ_CONTENT_EDGE   AX_ARGB(0x5A, 0x60, 0x60, 0x70)
 #define AQ_CONTENT_EDGE_L AX_ARGB(0x80, 255, 255, 255)
@@ -48,11 +48,15 @@
 #define AQ_TEXT_DISABLED  AX_RGB(170, 170, 178)
 
 /* --- toolbar (brushed metal strip under the titlebar) --- */
-#define AQ_TOOL_TOP       AX_RGB(0xF8, 0xF8, 0xFA)
-#define AQ_TOOL_BOT       AX_RGB(0xD8, 0xD8, 0xE0)
+/* Тулбар продолжает градиент шапки окна (в CSS-примере шапка и
+ * тулбар -- одна поверхность .chrome: 92% -> 71% серого). */
+/* Тулбар -- та же поверхность, что и шапка окна (в примере это
+ * один .chrome): цвет ровно тот, которым заканчивается шапка. */
+#define AQ_TOOL_TOP       AX_RGB(0xD2, 0xD2, 0xD2)
+#define AQ_TOOL_BOT       AX_RGB(0xD2, 0xD2, 0xD2)
 #define AQ_TOOL_TEXT      AX_RGB(60, 60, 68)
-#define AQ_TOOL_HAIR      AX_ARGB(0x50, 90, 90, 100)
-#define AQ_TOOL_SHINE     AX_ARGB(0x70, 255, 255, 255)
+#define AQ_TOOL_HAIR      AX_ARGB(0xFF, 0x69, 0x69, 0x69)
+#define AQ_TOOL_SHINE     AX_ARGB(0x2C, 255, 255, 255)
 
 /* --- accent (matches the shell default accent) --- */
 #define AQ_ACCENT         AX_RGB(10, 132, 255)
@@ -62,14 +66,14 @@
 #define AQ_ACCENT_DIM     AX_ARGB(0x60, 10, 132, 255)
 
 /* --- Aqua push buttons (AQ_BTN_MID reserved for future themes) --- */
-#define AQ_BTN_MID        AX_RGB(0xF4, 0xF4, 0xF6)
-#define AQ_BTN_TOP        AX_RGB(255, 255, 255)
-#define AQ_BTN_BOT        AX_RGB(0xD6, 0xD6, 0xDE)
-#define AQ_BTN_RIM        AX_ARGB(0x9A, 0x62, 0x62, 0x70)
+#define AQ_BTN_MID        AX_RGB(0xF7, 0xF7, 0xF7)
+#define AQ_BTN_TOP        AX_RGB(0xFE, 0xFE, 0xFE)
+#define AQ_BTN_BOT        AX_RGB(0xED, 0xED, 0xED)
+#define AQ_BTN_RIM        AX_ARGB(0x4D, 0x00, 0x00, 0x00)
 #define AQ_BTN_PRESS_TOP  AX_RGB(0xD8, 0xD8, 0xE0)
 #define AQ_BTN_PRESS_BOT  AX_RGB(0xBC, 0xBC, 0xC8)
 #define AQ_BTN_SHADOW     AX_ARGB(0x30, 0, 0, 0)
-#define AQ_BTN_H          22      /* standard push button height */
+#define AQ_BTN_H          20      /* standard push button height */
 
 /* --- text fields --- */
 #define AQ_FIELD_BG       AX_RGB(255, 255, 255)
@@ -83,13 +87,13 @@
 #define AQ_STATUS_BOT     AX_ARGB(0xFF, 0xD8, 0xD8, 0xE0)
 
 /* --- sidebar (Lion source list) --- */
-#define AQ_SIDEBAR_BG_TOP AX_RGB(0xE8, 0xEA, 0xF0)
-#define AQ_SIDEBAR_BG_BOT AX_RGB(0xD4, 0xD8, 0xE2)
+#define AQ_SIDEBAR_BG_TOP AX_RGB(0xEA, 0xED, 0xF2)
+#define AQ_SIDEBAR_BG_BOT AX_RGB(0xD3, 0xD8, 0xDF)
 #define AQ_SIDEBAR_TEXT   AX_RGB(40, 40, 48)
-#define AQ_SIDEBAR_DIM    AX_RGB(120, 122, 132)
-#define AQ_SEL_TOP        AQ_ACCENT_TOP
-#define AQ_SEL_BOT        AQ_ACCENT_BOT
-#define AQ_SEL_RIM        AQ_ACCENT_RIM
+#define AQ_SIDEBAR_DIM    AX_RGB(0x73, 0x7F, 0x8C)
+#define AQ_SEL_TOP        AX_RGB(0x78, 0xAF, 0xE3)
+#define AQ_SEL_BOT        AX_RGB(0x59, 0x80, 0xCF)
+#define AQ_SEL_RIM        AX_RGB(0x4A, 0x7A, 0xBA)
 
 /* --- scrollbars (Lion overlay style) --- */
 #define AQ_SCROLL_THUMB   AX_ARGB(0xB4, 0x8E, 0x8E, 0x98)
@@ -122,8 +126,9 @@ static inline void aq_window_bg(void)
  */
 static inline void aq_toolbar(int x, int y, int w, int h)
 {
-    aq_vgradient(x, y, w, h, AQ_TOOL_TOP, AQ_TOOL_BOT);
-    aq_fill_alpha(x, y, w, 1, AQ_TOOL_SHINE);
+    aq_fill(x, y, w, h, AQ_TOOL_TOP);
+    /* inset 0 -1px 0 rgba(255,255,255,.17) + border-bottom #696969 */
+    aq_fill_alpha(x, y + h - 2, w, 1, AQ_TOOL_SHINE);
     aq_fill_alpha(x, y + h - 1, w, 1, AQ_TOOL_HAIR);
 }
 
@@ -170,7 +175,7 @@ static inline void aq_button(int x, int y, int w, int h,
                              const char *label,
                              aq_btn_kind kind, aq_btn_state state)
 {
-    int r = h / 2 > 6 ? 6 : h / 2;
+    int r = h / 2 > 4 ? 4 : h / 2;
 
     if (kind == AQ_BTN_DEFAULT) {
         uint32_t top = AQ_BTN_UP, bot = AQ_BTN_UP, rim = AQ_BTN_RIM;
@@ -267,7 +272,7 @@ static inline void aq_field(int x, int y, int w, int h,
 static inline void aq_sidebar(int x, int y, int w, int h)
 {
     aq_vgradient(x, y, w, h, AQ_SIDEBAR_BG_TOP, AQ_SIDEBAR_BG_BOT);
-    aq_fill_alpha(x + w - 1, y, 1, h, AQ_CONTENT_EDGE);
+    aq_fill(x + w - 1, y, 1, h, AX_RGB(0xBB, 0xBB, 0xBB));
 }
 
 /*
@@ -284,7 +289,7 @@ static inline void aq_sidebar_item(int x, int y, int w, int h,
         aq_rounded_outline(x + 3, y + 1, w - 6, h - 2, 4,
                            AQ_SEL_RIM);
         if (label)
-            aq_text(label, x + 24, y + h / 2 - 4, AQ_TEXT_ON_ACCENT);
+            aq_text_bold(label, x + 24, y + h / 2 - 4, AQ_TEXT_ON_ACCENT);
     } else {
         if (label)
             aq_text(label, x + 24, y + h / 2 - 4, AQ_SIDEBAR_TEXT);
@@ -298,7 +303,7 @@ static inline void aq_sidebar_item(int x, int y, int w, int h,
 static inline void aq_sidebar_caption(int x, int y, const char *label)
 {
     if (label)
-        aq_text(label, x + 24, y, AQ_SIDEBAR_DIM);
+        aq_text_bold(label, x + 24, y, AQ_SIDEBAR_DIM);
 }
 
 /* ============================================================
@@ -359,6 +364,39 @@ static inline void aq_panel(int x, int y, int w, int h)
     aq_soft_shadow(x, y, w, h, 5, 2);
     aq_rounded_fill(x, y, w, h, 5, AQ_CONTENT_BG);
     aq_rounded_outline(x, y, w, h, 5, AQ_CONTENT_EDGE);
+}
+
+/*
+ * aq_segmented -- склеенный переключатель Lion (segmented control):
+ * один общий корпус с рамкой, разделители между сегментами и
+ * вдавленный активный сегмент.  active < 0 -- без активного.
+ * Глифы/подписи сегментов рисует вызывающий поверх.
+ */
+static inline void aq_segmented(int x, int y, int w, int h,
+                                int count, int active)
+{
+    if (count < 1 || w <= 0 || h <= 0) return;
+
+    int r  = h / 2 > 4 ? 4 : h / 2;
+    int sw = w / count;
+
+    aq_rounded_vgradient(x, y, w, h, r, AQ_BTN_TOP, AQ_BTN_BOT);
+
+    if (active >= 0 && active < count) {
+        int ax = x + active * sw;
+        int aw = (active == count - 1) ? (x + w - ax) : sw;
+
+        aq_vgradient(ax + 1, y + 1, aw - 2, h - 2,
+                     AQ_BTN_PRESS_TOP, AQ_BTN_PRESS_BOT);
+    }
+
+    for (int i = 1; i < count; i++) {
+        int dx = x + i * sw;
+        aq_vline(dx, y + 2, h - 4, AX_ARGB(0x40, 0, 0, 0));
+        aq_vline(dx + 1, y + 2, h - 4, AX_ARGB(0x30, 255, 255, 255));
+    }
+
+    aq_rounded_outline(x, y, w, h, r, AQ_BTN_RIM);
 }
 
 /* ============================================================

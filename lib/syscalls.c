@@ -1131,151 +1131,26 @@ void syscall_native_handler(
             break;
 
         /*
-         * 213 PING
+         * 214 DNS_RESOLVE(имя, uint32_t *out_ip)
          *
-         * sys_ping(ip_str, seq, wait_ms, out) -- ICMP echo через
-         * ixn-стек: отправка echo-request, ожидание эхо-ответа из
-         * ixn_ping_get_reply_match() не дольше wait_ms.
-         *
-         * Идентификатор echo-request = pid процесса (как в Linux):
-         * очередь ответов общая, но выборка идёт по паре (id, seq),
-         * поэтому параллельные ping-процессы не крадут ответы друг
-         * у друга, а запоздалый ответ к предыдущему пакету не
-         * засчитывается новому.  По той же причине общая очередь
-         * больше НЕ сбрасывается (flush) перед отправкой.
-         *
-         * out[0] = 1 ответ получен / 0 таймаут
-         * out[1] = seq ответа
-         * out[2] = адрес ответчика (host order)
-         * out[3] = ttl
-         * out[4] = размер пакета
-         * out[5] = RTT в микросекундах
-         *
-         * Возврат: 1 ответ получен, 0 отправлено, но таймаут,
-         * -2 отправить не удалось (после повторов), -1 неверные
-         * аргументы / нет сетевого устройства.
-         *
-         * Планировщик кооперативный: циклы ожидания внутри syscall'а
-         * (ARP, паузы ретраев, ожидание ответа) на каждом витке
-         * вызывают yield(), иначе ping замораживает терминал и всю
-         * систему на время ожидания.
+         * Разрешение имени A-записью через сервер из DHCP (или 8.8.8.8).
+         * Резолвер живёт в сетевом стеке: там уже есть UDP, ARP и
+         * таймауты, поэтому userspace-программам не нужен свой
+         * DNS-клиент.  Возврат: 0 -- адрес записан в *out_ip (host
+         * order, как у всего ixn-стека), отрицательный -- ошибка.
          */
-        case 213: {
+        case 214: {
 
-            extern int ixn_ping_get_reply_match(ixn_u16 id, ixn_u32 seq,
-                                                ixn_ping_reply_t *out);
-            extern int ixn_icmp_send_echo(ixn_netdev_t *dev, uint32_t dst_ip,
-                                          uint16_t id, uint16_t seq,
-                                          const uint8_t *data, uint32_t len);
-            extern ixn_netdev_t *ixn_netdev_get_default(void);
-            extern ixn_netdev_t *ixn_netdev_get_loopback(void);
-            extern int ixn_arp_ensure(ixn_netdev_t *dev, uint32_t dst_ip,
-                                      uint32_t timeout_ms);
-            extern void ixn_netdev_poll_all(uint32_t budget);
-            extern uint32_t ixn_ipv4_parse_str(const char *s);
-            extern uint64_t ixn_ticks_ms(void);
+            extern int ixn_dns_resolve_default(const char *name,
+                                               uint32_t *out_ip);
 
-            ixn_ping_reply_t rep;
-            ixn_netdev_t *ndev;
-            int64_t *out = (int64_t *)(uintptr_t)regs->r10;
-            uint32_t dst;
-            uint32_t wait_ms = (uint32_t)regs->rdx;
-            uint32_t seq = (uint32_t)regs->rsi;
-            uint16_t id = (uint16_t)ipc_getpid();
-            uint64_t deadline, t0;
-            int rc = 0;
-            int sent = 0;
-            int attempt;
-            int i;
+            regs->rax =
+                (uint64_t)(int64_t)
+                ixn_dns_resolve_default(
+                    (const char *)(uintptr_t)regs->rdi,
+                    (uint32_t *)(uintptr_t)regs->rsi
+                );
 
-            dst = ixn_ipv4_parse_str((const char *)(uintptr_t)regs->rdi);
-            /*
-             * 127/8 не должен уходить в физическую сеть: если loopback
-             * поднято, пингуем через него.  Loopback ищем ДО проверки
-             * default-устройства: ping 127.0.0.1 обязан работать и на
-             * машине без поддерживаемого NIC (тогда default == NULL).
-             */
-            ndev = IXN_NULL;
-            if ((dst & 0xFF000000u) == 0x7F000000u)
-                ndev = ixn_netdev_get_loopback();
-            if (!ndev)
-                ndev = ixn_netdev_get_default();
-            if (dst == 0u || !out || !ndev) {
-                regs->rax = (uint64_t)(int64_t)-1;
-                break;
-            }
-
-            for (i = 0; i < 6; i++) out[i] = 0;
-
-            /*
-             * Греем ARP-кэш: ждём MAC до 200 мс, чтобы первый
-             * echo-request после старта не улетал в никуда и не
-             * приходилось повторять его восемь раз.  Для loopback и
-             * собственного адреса это не нужно.
-             */
-            if (ndev->type != IXN_NETDEV_TYPE_LOOPBACK)
-                (void)ixn_arp_ensure(ndev, dst, 200u);
-
-            /*
-             * Отправка с повтором: ixn_ipv4_tx сбрасывает пакет только
-             * при реально неразрешённом ARP или нехватке skb, поэтому
-             * пара мгновенных повторов страхует от транзиентных отказов
-             * и не порождает дубликаты на проводе при успехе.
-             */
-            t0 = ixn_ticks_ms();
-            for (attempt = 0; attempt < 3 && !sent; attempt++) {
-                if (attempt > 0) {
-                    uint64_t until = ixn_ticks_ms() + 20u;
-                    while (ixn_ticks_ms() < until) {
-                        ixn_netdev_poll_all(16u);
-                        /*
-                         * Планировщик кооперативный -- без yield() эти
-                         * паузы тоже замораживали бы систему.
-                         */
-                        yield();
-                    }
-                }
-                if (ixn_icmp_send_echo(ndev, dst, id, (uint16_t)seq,
-                                       (const uint8_t *)"ArtyomX64 ping", 14u) == 0)
-                    sent = 1;
-            }
-
-            if (!sent) {
-                regs->rax = (uint64_t)(int64_t)-2;
-                break;
-            }
-
-            deadline = t0 + (uint64_t)wait_ms;
-            for (;;) {
-                if (ixn_ping_get_reply_match(id, seq, &rep) == 0) {
-                    uint64_t rtt_us =
-                        (rep.ts_ms > t0) ? (rep.ts_ms - t0) * 1000ull : 0ull;
-                    out[0] = 1;
-                    out[1] = (int64_t)rep.seq;
-                    out[2] = (int64_t)rep.src_ip;
-                    out[3] = (int64_t)rep.ttl;
-                    out[4] = (int64_t)rep.size;
-                    out[5] = (int64_t)rtt_us;
-                    rc = 1;
-                    break;
-                }
-                if (ixn_ticks_ms() >= deadline)
-                    break;
-                ixn_netdev_poll_all(64u);
-                /*
-                 * Планировщик кооперативный: каждый виток отдаёт квант
-                 * остальным задачам (wserver, терминал, мышь), иначе
-                 * пинг на wait_ms замораживал весь десктоп -- терминал
-                 * "зависал вместе с системой".  Когда других готовых
-                 * задач нет, yield() возвращается сразу и ping не
-                 * теряет скорости.  Выход из yield() на СВОЁМ
-                 * ядерно-стеке: переключение контекста syscall'а
-                 * предусмотрено планировщиком (ax_cur_kstack).
-                 */
-                yield();
-            }
-
-            regs->rax = (uint64_t)(int64_t)rc;
             break;
         }
 

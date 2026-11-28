@@ -389,6 +389,34 @@ static int in_rounded(int px, int py, int w, int h, int r)
     int dy = py - cy;
     return (dx * dx + dy * dy) <= (r * r);
 }
+
+/*
+ * Покрытие пикселя (0..255) кругом радиуса r с центром (cx, cy):
+ * 16 подвыборок 4x4.  Нужно для сглаживания скруглённых углов окна --
+ * без него край идёт ступенькой.
+ */
+static int arc_cov(int i, int j, int cx, int cy, int r)
+{
+    int n = 0;
+    int r4 = r * 4;
+    for (int sy = 1; sy < 8; sy += 2)
+        for (int sx = 1; sx < 8; sx += 2) {
+            int dx = i * 4 + sx - cx * 4;
+            int dy = j * 4 + sy - cy * 4;
+            if (dx * dx + dy * dy <= r4 * r4) n++;
+        }
+    return n * 255 / 16;
+}
+
+/* Наложить цвет с заданным покрытием, сохранив альфу самого цвета. */
+static void put_pixel_cov(int x, int y, uint32_t color, int cov)
+{
+    if (x < 0 || y < 0 || x >= (int)fb_w || y >= (int)fb_h) return;
+    uint32_t *p = &backbuffer[y * fb_w + x];
+    if (cov >= 255) { *p = gfx_blend(*p, color); return; }
+    uint32_t a = ((color >> 24) & 0xFF) * (uint32_t)cov / 255;
+    *p = gfx_blend(*p, (a << 24) | (color & 0x00FFFFFF));
+}
  
 void gfx_rounded_rect(int x, int y, int w, int h, int radius, uint32_t color)
 {
@@ -814,6 +842,34 @@ void gfx_blit_argb(const uint32_t *src, int sw, int sh, int dx, int dy)
         }
 }
  
+void gfx_blit_argb_round_bottom(const uint32_t *src, int sw, int sh,
+                                int dx, int dy, int dw, int dh, int radius)
+{
+    if (dw <= 0 || dh <= 0 || sw <= 0 || sh <= 0) return;
+    if (radius * 2 > dw) radius = dw / 2;
+    if (radius * 2 > dh) radius = dh / 2;
+
+    int xs = (dw == sw), ys = (dh == sh);
+    int cy = dh - 1 - radius;
+
+    for (int j = 0; j < dh; j++) {
+        int sy = ys ? j : j * sh / dh;
+        /* проверка угла нужна только в полосе снизу */
+        int band = radius > 0 && j >= dh - radius;
+        for (int i = 0; i < dw; i++) {
+            int cov = 255;
+            if (band && !(i >= radius && i < dw - radius)) {
+                int cx = (i < radius) ? radius : dw - 1 - radius;
+                cov = arc_cov(i, j, cx, cy, radius);
+                if (cov == 0) continue;
+            }
+            int sx = xs ? i : i * sw / dw;
+            uint32_t c = src[sy * sw + sx];
+            put_pixel_cov(dx + i, dy + j, c, cov);
+        }
+    }
+}
+
 void gfx_blit_argb_scaled(const uint32_t *src, int sw, int sh, int dx, int dy, int dw, int dh)
 {
     if (dw <= 0 || dh <= 0 || sw <= 0 || sh <= 0) return;
@@ -913,6 +969,86 @@ void gfx_rounded_vgradient(int x, int y, int w, int h, int radius,
             if (in_rounded(i, j, w, h, radius))
                 gfx_pixel(x + i, y + j, c);
     }
+}
+
+/* Как gfx_rounded_vgradient, но скруглены ТОЛЬКО верхние углы:
+ * низ заголовка должен стыковаться с телом окна без выемок. */
+void gfx_vgradient_top_rounded(int x, int y, int w, int h, int radius,
+                               uint32_t top, uint32_t bottom)
+{
+    if (radius * 2 > w) radius = w / 2;
+    if (radius * 2 > h) radius = h / 2;
+    for (int j = 0; j < h; j++) {
+        int t = (h > 1) ? (j * 256) / (h - 1) : 0;
+        uint32_t c = gfx_lerp_color(top, bottom, t);
+        int band = radius > 0 && j < radius;
+        for (int i = 0; i < w; i++) {
+            int cov = 255;
+            if (band && !(i >= radius && i < w - radius)) {
+                int cx = (i < radius) ? radius : w - 1 - radius;
+                cov = arc_cov(i, j, cx, radius, radius);
+                if (cov == 0) continue;
+            }
+            put_pixel_cov(x + i, y + j, c, cov);
+        }
+    }
+}
+
+/* Как in_rounded, но скруглены только нижние углы. */
+static int in_round_bottom(int px, int py, int w, int h, int r)
+{
+    if (py < h - r) return 1;
+    if (px >= r && px < w - r) return 1;
+    int cx = (px < r) ? r : w - 1 - r;
+    int cy = h - 1 - r;
+    int dx = px - cx, dy = py - cy;
+    return (dx * dx + dy * dy) <= (r * r);
+}
+
+/*
+ * Панель выпадающего меню из меню-бара (Lion): верхние углы прямые --
+ * панель примыкает к бару, -- нижние скруглены, тело с вертикальным
+ * градиентом и 1px рамкой.  Прозрачность обоих стопов в старшем байте.
+ */
+void gfx_menu_panel(int x, int y, int w, int h, int radius,
+                    uint32_t top_argb, uint32_t bot_argb, uint32_t edge_argb)
+{
+    if (w <= 0 || h <= 0) return;
+    if (radius * 2 > w) radius = w / 2;
+    if (radius * 2 > h) radius = h / 2;
+
+    int cy = h - 1 - radius;
+
+    for (int j = 0; j < h; j++) {
+        int t = (h > 1) ? (j * 256) / (h - 1) : 0;
+        uint32_t c = gfx_lerp_color(top_argb, bot_argb, t);
+        int band = radius > 0 && j >= h - radius;
+        for (int i = 0; i < w; i++) {
+            int cov = 255;
+            if (band && !(i >= radius && i < w - radius)) {
+                int cx = (i < radius) ? radius : w - 1 - radius;
+                cov = arc_cov(i, j, cx, cy, radius);
+                if (cov == 0) continue;
+            }
+            put_pixel_cov(x + i, y + j, c, cov);
+        }
+    }
+
+    /* рамка: прямые верх и бока + дуга снизу */
+    gfx_fill_rect_alpha(x, y, w, 1, edge_argb);
+    gfx_fill_rect_alpha(x, y + 1, 1, h - 1, edge_argb);
+    gfx_fill_rect_alpha(x + w - 1, y + 1, 1, h - 1, edge_argb);
+    for (int j = h - radius; j < h; j++)
+        for (int i = 0; i < w; i++) {
+            if (!in_round_bottom(i, j, w, h, radius)) continue;
+            int inner = (i >= 1 && i < w - 1 && j >= 1 &&
+                         in_round_bottom(i - 1, j, w, h, radius) &&
+                         in_round_bottom(i + 1, j, w, h, radius) &&
+                         in_round_bottom(i, j - 1, w, h, radius) &&
+                         in_round_bottom(i, j + 1, w, h, radius));
+            if (!inner)
+                gfx_fill_rect_alpha(x + i, y + j, 1, 1, edge_argb);
+        }
 }
 
 /* Rounded rectangle filled with a translucent vertical gradient. */

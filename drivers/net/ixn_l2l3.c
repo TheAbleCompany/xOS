@@ -7,96 +7,10 @@ static volatile ixn_irq_lock_t g_ixn_arp_lock = 0u;
 static ixn_u32 g_ixn_ip_id_counter = 1u;
 static ixn_u32 g_ixn_icmp_seq = 0u;
 
-static ixn_ping_reply_t g_ixn_ping_queue[IXN_PING_QUEUE_SIZE];
-static ixn_u32 g_ixn_ping_head = 0u;
-static ixn_u32 g_ixn_ping_tail = 0u;
-static volatile ixn_irq_lock_t g_ixn_ping_lock = 0u;
-
 void ixn_l2l3_init(void) {
     ixn_memset(g_ixn_arp_table, 0, sizeof(g_ixn_arp_table));
     g_ixn_ip_id_counter = 1u;
     g_ixn_icmp_seq = 0u;
-    ixn_ping_flush();
-}
-
-void ixn_ping_flush(void) {
-    ixn_u64 flags = ixn_irq_lock_acquire(&g_ixn_ping_lock);
-    g_ixn_ping_head = 0u;
-    g_ixn_ping_tail = 0u;
-    ixn_memset(g_ixn_ping_queue, 0, sizeof(g_ixn_ping_queue));
-    ixn_irq_lock_release(&g_ixn_ping_lock, flags);
-}
-
-int ixn_ping_get_reply(ixn_ping_reply_t *out) {
-    ixn_u64 flags;
-    int rc = -1;
-    if (!out) return -1;
-    flags = ixn_irq_lock_acquire(&g_ixn_ping_lock);
-    if (g_ixn_ping_head != g_ixn_ping_tail) {
-        *out = g_ixn_ping_queue[g_ixn_ping_head];
-        g_ixn_ping_head = (g_ixn_ping_head + 1u) % IXN_PING_QUEUE_SIZE;
-        rc = 0;
-    }
-    ixn_irq_lock_release(&g_ixn_ping_lock, flags);
-    return rc;
-}
-
-int ixn_ping_get_reply_match(ixn_u16 id, ixn_u32 seq, ixn_ping_reply_t *out) {
-    ixn_u64 flags;
-    int rc = -1;
-    if (!out) return -1;
-    flags = ixn_irq_lock_acquire(&g_ixn_ping_lock);
-    if (g_ixn_ping_head != g_ixn_ping_tail) {
-        ixn_u32 n = (g_ixn_ping_tail + IXN_PING_QUEUE_SIZE - g_ixn_ping_head) % IXN_PING_QUEUE_SIZE;
-        ixn_u32 k, pos;
-        for (k = 0u; k < n; k++) {
-            ixn_u32 idx = (g_ixn_ping_head + k) % IXN_PING_QUEUE_SIZE;
-            ixn_ping_reply_t *e = &g_ixn_ping_queue[idx];
-            if (e->in_use && e->id == id && e->seq == seq) {
-                *out = *e;
-                /* Сдвигаем хвост очереди, затирая найденный слот: чужие
-                 * ответы остаются ждать своих владельцев. */
-                for (pos = k; pos + 1u < n; pos++) {
-                    ixn_u32 cur = (g_ixn_ping_head + pos) % IXN_PING_QUEUE_SIZE;
-                    ixn_u32 nxt = (g_ixn_ping_head + pos + 1u) % IXN_PING_QUEUE_SIZE;
-                    g_ixn_ping_queue[cur] = g_ixn_ping_queue[nxt];
-                }
-                g_ixn_ping_tail = (g_ixn_ping_tail + IXN_PING_QUEUE_SIZE - 1u) % IXN_PING_QUEUE_SIZE;
-                rc = 0;
-                break;
-            }
-        }
-    }
-    ixn_irq_lock_release(&g_ixn_ping_lock, flags);
-    return rc;
-}
-
-static void ixn_ping_push(ixn_u32 src_ip, ixn_u8 type, ixn_u8 code, ixn_u16 id_be,
-                          ixn_u16 seq_be, ixn_u32 ttl, ixn_u32 size, ixn_u64 ts_ms) {
-    ixn_u64 flags = ixn_irq_lock_acquire(&g_ixn_ping_lock);
-    ixn_u32 next = (g_ixn_ping_tail + 1u) % IXN_PING_QUEUE_SIZE;
-    ixn_ping_reply_t *r;
-    if (next == g_ixn_ping_head) {
-        /*
-         * Очередь полна: выталкиваем самый старый ответ, а не молча
-         * роняем самый свежий -- потеря только что пришедшего ответа
-         * ping засчитал бы как потерю пакета.
-         */
-        g_ixn_ping_head = (g_ixn_ping_head + 1u) % IXN_PING_QUEUE_SIZE;
-    }
-    r = &g_ixn_ping_queue[g_ixn_ping_tail];
-    ixn_memset(r, 0, sizeof(*r));
-    r->in_use = 1u;
-    r->code = code;
-    r->src_ip = src_ip;
-    r->id = (ixn_u16)IXN_ntohs(id_be);
-    r->seq = (ixn_u32)IXN_ntohs(seq_be);
-    r->ttl = ttl;
-    r->size = size;
-    r->ts_ms = ts_ms;
-    g_ixn_ping_tail = next;
-    (void)type;
-    ixn_irq_lock_release(&g_ixn_ping_lock, flags);
 }
 
 ixn_u16 ixn_checksum16(const ixn_u8 *data, ixn_u32 len, ixn_u32 init) {
@@ -497,6 +411,26 @@ int ixn_icmp_send_echo(ixn_netdev_t *dev, ixn_u32 dst_ip, ixn_u16 id, ixn_u16 se
     return ixn_ipv4_tx(dev, skb, dst_ip, IXN_IP_PROTO_ICMP);
 }
 
+/*
+ * Отправка ICMP-сообщения, собранного в userspace (raw-сокет).
+ * Контрольная сумма пересчитывается здесь: приложению не нужно знать
+ * порядок байтов при её расчёте, а неверная сумма на проводе недопустима.
+ */
+int ixn_icmp_send_raw(ixn_netdev_t *dev, ixn_u32 dst_ip, const ixn_u8 *pkt, ixn_u32 len) {
+    ixn_skb_t *skb;
+    ixn_icmp_hdr_t *icmp;
+    if (!dev || !pkt || len < sizeof(ixn_icmp_hdr_t)) return -1;
+    skb = ixn_skb_alloc(len + 20u);
+    if (!skb) return -2;
+    ixn_skb_reserve(skb, 20u);
+    ixn_skb_put(skb, len);
+    ixn_memcpy(skb->data, pkt, len);
+    icmp = (ixn_icmp_hdr_t *)skb->data;
+    icmp->checksum = 0u;
+    icmp->checksum = ixn_checksum16(skb->data, skb->len, 0u);
+    return ixn_ipv4_tx(dev, skb, dst_ip, IXN_IP_PROTO_ICMP);
+}
+
 int ixn_icmp_rx(ixn_netdev_t *dev, ixn_skb_t *skb) {
     ixn_icmp_hdr_t *icmp;
     if (!dev || !skb || skb->len < sizeof(ixn_icmp_hdr_t)) return -1;
@@ -523,19 +457,14 @@ int ixn_icmp_rx(ixn_netdev_t *dev, ixn_skb_t *skb) {
         r->checksum = ixn_checksum16(reply->data, reply->len, 0u);
         return ixn_ipv4_tx(dev, reply, src, IXN_IP_PROTO_ICMP);
     }
-    if (icmp->type == IXN_ICMP_ECHO_REPLY) {
-        ixn_ipv4_hdr_t *orig_ip = (ixn_ipv4_hdr_t *)ixn_skb_network_header(skb);
-        ixn_ping_push(orig_ip ? orig_ip->src : 0u, icmp->type, icmp->code,
-                      icmp->id, icmp->seq, orig_ip ? (ixn_u32)orig_ip->ttl : 0u,
-                      skb->len, ixn_ticks_ms());
-        return 0;
-    }
-    if (icmp->type == IXN_ICMP_DEST_UNREACH || icmp->type == IXN_ICMP_TIME_EXCEED) {
-        ixn_ipv4_hdr_t *orig_ip = (ixn_ipv4_hdr_t *)ixn_skb_network_header(skb);
-        ixn_ping_push(orig_ip ? orig_ip->src : 0u, icmp->type, icmp->code,
-                      0u, 0u, orig_ip ? (ixn_u32)orig_ip->ttl : 0u, skb->len, ixn_ticks_ms());
-        return 0;
-    }
+    /*
+     * Эхо-ответы и ошибки отдаём raw-сокетам: ping теперь обычная
+     * userspace-программа и разбирает ICMP сам (id/seq, RTT, статистику).
+     */
+    if (icmp->type == IXN_ICMP_ECHO_REPLY ||
+        icmp->type == IXN_ICMP_DEST_UNREACH ||
+        icmp->type == IXN_ICMP_TIME_EXCEED)
+        return ixn_icmp_socket_push(skb);
     return 0;
 }
 

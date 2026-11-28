@@ -106,6 +106,44 @@ ixn_fd_t ixn_api_accept(ixn_fd_t fd, ixn_sockaddr_in_t *out_addr) {
     return ixn_api_fd_alloc(child);
 }
 
+static ixn_netdev_t *ixn_api_raw_dev(ixn_u32 dst_ip) {
+    ixn_netdev_t *dev = IXN_NULL;
+    if ((dst_ip & 0xFF000000u) == 0x7F000000u)
+        dev = ixn_netdev_get_loopback();
+    if (!dev) dev = ixn_netdev_get_default();
+    /* default может быть UP, но без IPv4 (DHCP ушёл на другой NIC) */
+    if (!dev || dev->ipv4_addr == 0u) {
+        ixn_netdev_t *up = ixn_netdev_get_first_up();
+        if (up) dev = up;
+    }
+    return dev;
+}
+
+/*
+ * raw ICMP: адрес назначения и пакет задаёт приложение.  ARP греем здесь,
+ * иначе первый echo-request после старта уходит в никуда (ixn_ipv4_tx
+ * сбрасывает пакет при неразрешённом MAC).
+ */
+static int ixn_api_raw_send(ixn_socket_t *s, ixn_u32 dst_ip, const ixn_u8 *buf, ixn_u32 len) {
+    ixn_netdev_t *dev = s->dev ? s->dev : ixn_api_raw_dev(dst_ip);
+    if (!dev) return IXN_E_NETUNREACH;
+    if (!ixn_netdev_is_loopback(dev))
+        (void)ixn_arp_ensure(dev, dst_ip, 200u);
+    if (ixn_icmp_send_raw(dev, dst_ip, buf, len) != 0)
+        return IXN_E_NETUNREACH;
+    return (int)len;
+}
+
+/* Пустая очередь -- сначала вычитываем драйвер, как blocking recv. */
+static int ixn_api_raw_recv(ixn_socket_t *s, ixn_u8 *buf, ixn_u32 cap) {
+    int rc = ixn_icmp_socket_recv(s, buf, cap);
+    if (rc == -2) {
+        ixn_netdev_poll_all(IXN_NETDEV_RX_BUDGET);
+        rc = ixn_icmp_socket_recv(s, buf, cap);
+    }
+    return rc;
+}
+
 int ixn_api_send(ixn_fd_t fd, const ixn_u8 *buf, ixn_u32 len, ixn_u32 flags) {
     ixn_api_fd_t *f = ixn_api_fd_get(fd);
     (void)flags;
@@ -115,6 +153,9 @@ int ixn_api_send(ixn_fd_t fd, const ixn_u8 *buf, ixn_u32 len, ixn_u32 flags) {
     }
     if (f->sock->type == IXN_SOCK_TYPE_UDP) {
         return ixn_udp_socket_send(f->sock, f->sock->remote_ip, f->sock->remote_port, buf, len);
+    }
+    if (f->sock->type == IXN_SOCK_TYPE_RAW) {
+        return ixn_api_raw_send(f->sock, f->sock->remote_ip, buf, len);
     }
     return IXN_E_INVAL;
 }
@@ -129,6 +170,9 @@ int ixn_api_recv(ixn_fd_t fd, ixn_u8 *buf, ixn_u32 cap, ixn_u32 flags) {
     if (f->sock->type == IXN_SOCK_TYPE_UDP) {
         return ixn_udp_socket_recv(f->sock, IXN_NULL, IXN_NULL, buf, cap);
     }
+    if (f->sock->type == IXN_SOCK_TYPE_RAW) {
+        return ixn_api_raw_recv(f->sock, buf, cap);
+    }
     return IXN_E_INVAL;
 }
 
@@ -141,6 +185,9 @@ int ixn_api_sendto(ixn_fd_t fd, const ixn_u8 *buf, ixn_u32 len, ixn_u32 flags, c
     }
     if (f->sock->type == IXN_SOCK_TYPE_TCP) {
         return ixn_tcp_send(f->sock, buf, len);
+    }
+    if (f->sock->type == IXN_SOCK_TYPE_RAW) {
+        return ixn_api_raw_send(f->sock, dst->addr, buf, len);
     }
     return IXN_E_INVAL;
 }
@@ -163,6 +210,9 @@ int ixn_api_recvfrom(ixn_fd_t fd, ixn_u8 *buf, ixn_u32 cap, ixn_u32 flags, ixn_s
     }
     if (f->sock->type == IXN_SOCK_TYPE_TCP) {
         return ixn_tcp_socket_recv(f->sock, buf, cap);
+    }
+    if (f->sock->type == IXN_SOCK_TYPE_RAW) {
+        return ixn_api_raw_recv(f->sock, buf, cap);
     }
     return IXN_E_INVAL;
 }

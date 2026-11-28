@@ -590,7 +590,8 @@ static void gloss_dome(int cx, int cy, int r)
  * grey, and hovering the titlebar colours them and reveals the
  * close/min/zoom glyphs exactly like 10.7.
  */
-static void draw_titlebar_ex(ax_surface_win *w, int x, int y, int wid, int tbh)
+static void draw_titlebar_ex(ax_surface_win *w, int x, int y, int wid, int tbh,
+                             int radius)
 {
     bool hover_title = mouse_in_rect(w->x, w->y, w->w, AX_TITLEBAR_H) && !w->anim_kind;
     bool colored     = w->focused || hover_title;
@@ -599,11 +600,12 @@ static void draw_titlebar_ex(ax_surface_win *w, int x, int y, int wid, int tbh)
     uint32_t t_bot = w->focused ? LION_TITLE_F_BOT : LION_TITLE_U_BOT;
 
     /* titlebar body */
-    gfx_rounded_vgradient(x, y, wid, tbh, 7, t_top, t_bot);
+    gfx_vgradient_top_rounded(x, y, wid, tbh, radius, t_top, t_bot);
 
-    /* top inner highlight + bottom separator (brushed metal cue) */
-    gfx_fill_rect_alpha(x + 2, y + 1, wid - 4, 1, ARGB(0x70,255,255,255));
-    gfx_fill_rect_alpha(x + 1, y + tbh - 1, wid - 2, 1, ARGB(0x38,60,60,70));
+    /* top inner highlight begins after the corner curve; the bar has
+     * no bottom rule -- the window toolbar continues the same surface */
+    gfx_fill_rect_alpha(x + radius, y + 1, wid - radius * 2, 1,
+                        ARGB(0x70,255,255,255));
 
     /* --- traffic lights --- */
     int cy = y + tbh / 2;
@@ -679,6 +681,9 @@ void draw_surface(ax_surface_win *w)
     int full_h = w->h + AX_TITLEBAR_H;
     int fx = w->x, fy = w->y, fw = full_w, fh = full_h;
     int tbh = AX_TITLEBAR_H;
+    /* В полноэкранном режиме окно занимает весь экран -- углы квадратные,
+     * как в полноэкранном macOS, иначе в углах просвечивают обои. */
+    int wr = w->fullscreen ? 0 : AX_WIN_RADIUS;
     bool animating = false;
 
     if (w->anim_kind == AX_ANIM_OPEN) {
@@ -749,31 +754,31 @@ void draw_surface(ax_surface_win *w)
 
     /* --- window body --- */
 
-    /* canvas blit first; the titlebar overlays the top region */
+    /* canvas blit first; the titlebar overlays the top region.
+     * Тело окна идёт вровень с заголовком (раньше был отступ 2px слева,
+     * справа и снизу -- он давал ступеньку под заголовком), а нижние
+     * углы срезаются тем же радиусом, что и заголовок, -- окно читается
+     * как одна скруглённая форма, как в macOS. */
     if (w->canvas) {
-        int bx = fx + 2;
+        int bx = fx;
         int by = fy + tbh;
-        int bw = fw - 4;
-        int bh = fh - tbh - 2;
+        int bw = fw;
+        int bh = fh - tbh;
         if (bw > 0 && bh > 0) {
-            if (bw == w->canvas_w && bh == w->canvas_h)
-                gfx_blit_argb(w->canvas, w->canvas_w, w->canvas_h, bx, by);
-            else
-                gfx_blit_argb_scaled(w->canvas, w->canvas_w, w->canvas_h,
-                                      bx, by, bw, bh);
+            gfx_blit_argb_round_bottom(w->canvas, w->canvas_w, w->canvas_h,
+                                       bx, by, bw, bh, wr);
         }
         w->dirty = false;
     } else {
         serial_puts_ax("NO_CANVAS\n");
     }
 
-    /* 1px dark outline around the whole window (Lion frame) */
-    gfx_rounded_outline(fx, fy, fw, fh, 7, LION_FRAME_EDGE);
+    draw_titlebar_ex(w, fx, fy, fw, tbh, wr);
 
-    draw_titlebar_ex(w, fx, fy, fw, tbh);
+    /* 1px dark outline LAST: иначе заголовок накрывает рамку и
+     * вылезает за скруглённые края окна */
+    gfx_rounded_outline(fx, fy, fw, fh, wr, LION_FRAME_EDGE);
 
-    /* hairline under the titlebar: .container border-top #656565 */
-    gfx_fill_rect_alpha(fx + 1, fy + tbh, fw - 2, 1, ARGB(0xB0,101,101,101));
 }
 
 /*
@@ -917,7 +922,6 @@ static void h_surface(const ax_msg_t *m)
 static void h_commit(const ax_msg_t *m)
 {
     ax_surface_win *s = surf_by_token(m->win);
-
     if (s) s->dirty = true;
 }
 

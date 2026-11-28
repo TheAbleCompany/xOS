@@ -108,18 +108,40 @@ static const char *files_file_items[] = {
     "Close Window"
 };
 
+static const char *files_edit_items[] = { "Deselect" };
+static const char *files_go_items[]   = { "Up", "Root" };
+static const char *files_view_items[] = { "Icons", "List" };
+
 static const ax_menu_def_t files_menus[] = {
     { "File", files_file_items, 3 },
+    { "Edit", files_edit_items, 1 },
+    { "Go",   files_go_items,   2 },
+    { "View", files_view_items, 2 },
 };
 
 static const ax_menubar_def_t files_menubar = {
     "Files",
     files_menus,
-    1
+    4
 };
 
 
 static int scroll_row = 0;
+
+void reload_directory(void);
+
+#define HIST_MAX 16
+
+static char hist[HIST_MAX][PATH_MAX];
+static int  hist_len = 0;
+static int  hist_pos = -1;
+
+#define VIEW_ICONS 0
+#define VIEW_LIST  1
+
+static int view_mode = VIEW_ICONS;
+
+#define LIST_ROW_H 22
 
 static int scrollbar_drag = 0;
 static int drag_offset_y = 0;
@@ -260,16 +282,140 @@ static int go_up(void)
 }
 
 
+static int str_eq(const char *a, const char *b)
+{
+    int i = 0;
+
+    while (a[i] && b[i]) {
+        if (a[i] != b[i])
+            return 0;
+        i++;
+    }
+
+    return a[i] == b[i];
+}
+
+
+static void nav_load(const char *path)
+{
+    copy_text(current_root, path, sizeof(current_root));
+
+    sel = -1;
+    last_sel = -1;
+    scroll_row = 0;
+
+    reload_directory();
+}
+
+
+static void hist_record(const char *path)
+{
+    if (hist_pos >= 0 && hist_pos < hist_len &&
+        str_eq(hist[hist_pos], path))
+        return;
+
+    if (hist_pos + 1 < HIST_MAX) {
+        hist_pos++;
+    } else {
+        for (int i = 1; i < HIST_MAX; i++)
+            copy_text(hist[i - 1], hist[i], PATH_MAX);
+
+        hist_pos = HIST_MAX - 1;
+    }
+
+    copy_text(hist[hist_pos], path, PATH_MAX);
+    hist_len = hist_pos + 1;
+}
+
+
+static void nav_to(const char *path)
+{
+    if (!path || !path[0])
+        return;
+
+    hist_record(current_root);
+    nav_load(path);
+}
+
+
+static void nav_back(void)
+{
+    if (hist_pos <= 0)
+        return;
+
+    hist_pos--;
+    nav_load(hist[hist_pos]);
+}
+
+
+static void nav_forward(void)
+{
+    if (hist_pos + 1 >= hist_len)
+        return;
+
+    hist_pos++;
+    nav_load(hist[hist_pos]);
+}
+
+
+static void go_up_nav(void)
+{
+    char path[PATH_MAX];
+    int last = -1;
+
+    copy_text(path, current_root, sizeof(path));
+
+    for (int i = 0; path[i]; i++)
+        if (path[i] == '/')
+            last = i;
+
+    if (last <= 0) {
+        set_status("Already at volume root");
+        return;
+    }
+
+    path[last] = 0;
+    nav_to(path);
+}
+
+
+static void go_root(void)
+{
+    nav_to(current_root[0] == 'd' ? "disk0" : "initrd");
+}
+
+
+static int view_rows_per_page(void)
+{
+    return view_mode == VIEW_LIST ? GRID_H / LIST_ROW_H : VISIBLE_ROWS;
+}
+
+
+static void set_view(int mode)
+{
+    if (mode == view_mode)
+        return;
+
+    view_mode = mode;
+
+    sel = -1;
+    last_sel = -1;
+    scroll_row = 0;
+}
+
+
 static int total_rows(void)
 {
-    return (nfiles + COLS - 1) / COLS;
+    return view_mode == VIEW_LIST
+               ? nfiles
+               : (nfiles + COLS - 1) / COLS;
 }
 
 
 static int max_scroll_row(void)
 {
     int rows = total_rows();
-    int max = rows - VISIBLE_ROWS;
+    int max = rows - view_rows_per_page();
 
     if (max < 0)
         max = 0;
@@ -480,10 +626,10 @@ static int scrollbar_thumb_height(void)
     int rows = total_rows();
     int h;
 
-    if (rows <= VISIBLE_ROWS)
+    if (rows <= view_rows_per_page())
         return SCROLL_TRACK_H;
 
-    h = (SCROLL_TRACK_H * VISIBLE_ROWS) / rows;
+    h = (SCROLL_TRACK_H * view_rows_per_page()) / rows;
 
     if (h < 16)
         h = 16;
@@ -594,6 +740,58 @@ static void draw_grid_label(
 
 
 /* ============================================================
+ * TOOLBAR GLYPHS
+ * ============================================================ */
+
+static void draw_refresh_glyph(int cx, int cy, uint32_t col)
+{
+    static const int px[13] = { 0, 3, 5, 6, 5, 3, 0, -3, -5, -6, -5, -3, 0 };
+    static const int py[13] = { -6, -5, -3, 0, 3, 5, 6, 5, 3, 0, -3, -5, -6 };
+
+    for (int i = 0; i < 12; i++) {
+        if (i <= 2)   /* разрыв под стрелку */
+            continue;
+        aq_line(cx + px[i], cy + py[i],
+                cx + px[i + 1], cy + py[i + 1], col);
+    }
+
+    /* стрелка на конце дуги */
+    aq_line(cx + px[2], cy + py[2], cx + px[2] + 3, cy + py[2] - 2, col);
+    aq_line(cx + px[2], cy + py[2], cx + px[2] + 4, cy + py[2] + 1, col);
+}
+
+
+static void draw_nav_glyph(int cx, int cy, int forward, uint32_t col)
+{
+    if (!forward) {
+        aq_line(cx + 2, cy - 5, cx - 2, cy, col);
+        aq_line(cx - 2, cy, cx + 2, cy + 5, col);
+    } else {
+        aq_line(cx - 2, cy - 5, cx + 2, cy, col);
+        aq_line(cx + 2, cy, cx - 2, cy + 5, col);
+    }
+}
+
+
+static void draw_grid_glyph(int cx, int cy, uint32_t col)
+{
+    aq_fill(cx - 7, cy - 6, 5, 5, col);
+    aq_fill(cx + 2, cy - 6, 5, 5, col);
+    aq_fill(cx - 7, cy + 1, 5, 5, col);
+    aq_fill(cx + 2, cy + 1, 5, 5, col);
+}
+
+
+static void draw_list_glyph(int cx, int cy, uint32_t col)
+{
+    for (int i = 0; i < 3; i++) {
+        aq_fill(cx - 7, cy - 6 + i * 5, 3, 3, col);
+        aq_fill(cx - 2, cy - 5 + i * 5, 9, 2, col);
+    }
+}
+
+
+/* ============================================================
  * RENDER
  * ============================================================ */
 
@@ -605,22 +803,23 @@ void render(void)
 
     /* TOOLBAR */
 
-    aq_button(8, 4, 26, 20, 0, AQ_BTN_NORMAL, AQ_BTN_DISABLED);
-    aq_button(38, 4, 26, 20, 0, AQ_BTN_NORMAL, AQ_BTN_DISABLED);
+    /* [‹|›]  [icons|list]  (refresh)   path... */
 
-    aq_scroll_arrow(
-        8 + 13,
-        4 + 10,
-        1,
-        can_go_up() ? AQ_TEXT : AQ_TEXT_DISABLED
-    );
+    aq_segmented(8, 4, 52, 20, 2, -1);
+    aq_segmented(68, 4, 52, 20, 2, view_mode == VIEW_LIST ? 1 : 0);
+    aq_button(128, 4, 26, 20, 0, AQ_BTN_NORMAL, AQ_BTN_DISABLED);
 
-    aq_scroll_arrow(
-        38 + 13,
-        4 + 10,
-        0,
-        AQ_TEXT_DISABLED
-    );
+    draw_nav_glyph(8 + 13, 4 + 10, 0,
+                   hist_pos > 0 ? AQ_TEXT : AQ_TEXT_DISABLED);
+    draw_nav_glyph(8 + 26 + 13, 4 + 10, 1,
+                   hist_pos + 1 < hist_len ? AQ_TEXT : AQ_TEXT_DISABLED);
+
+    draw_grid_glyph(68 + 13, 4 + 10,
+                    view_mode == VIEW_ICONS ? AQ_TEXT : AQ_TEXT_DISABLED);
+    draw_list_glyph(68 + 26 + 13, 4 + 10,
+                    view_mode == VIEW_LIST ? AQ_TEXT : AQ_TEXT_DISABLED);
+
+    draw_refresh_glyph(128 + 13, 4 + 10, AQ_TEXT);
 
     if (!can_go_up()) {
 
@@ -629,13 +828,13 @@ void render(void)
                 ? "disk0 (real disk)"
                 : "initrd filesystem";
 
-        aq_text_bold(loc, 78, 10, AQ_TOOL_TEXT);
+        aq_text_bold(loc, 160, 10, AQ_TOOL_TEXT);
 
     } else {
 
         char loc[64];
 
-        int maxc = (CW - 78 - 6) / 8;
+        int maxc = (CW - 160 - 6) / 8;
         int i = 0;
 
         while (current_root[i] && i < maxc) {
@@ -655,7 +854,7 @@ void render(void)
 
         loc[i] = 0;
 
-        aq_text_bold(loc, 78, 10, AQ_TOOL_TEXT);
+        aq_text_bold(loc, 160, 10, AQ_TOOL_TEXT);
     }
 
 
@@ -705,6 +904,48 @@ void render(void)
 
     /* FILE GRID */
 
+    if (view_mode == VIEW_LIST) {
+
+        int rows = view_rows_per_page();
+
+        for (int r = 0; r < rows; r++) {
+
+            int i = scroll_row + r;
+
+            if (i >= nfiles)
+                break;
+
+            int iy = GRID_Y + r * LIST_ROW_H;
+
+            if (iy + LIST_ROW_H > GRID_BOTTOM)
+                break;
+
+            if (i == sel)
+                aq_select_rect(GRID_X - 2, iy, GRID_W + 4, LIST_ROW_H - 2);
+
+            int icon_s = 14;
+            int icon_x = GRID_X + 3;
+            int icon_y = iy + (LIST_ROW_H - icon_s) / 2;
+
+            if (files[i].is_dir)
+                aq_icon_folder(icon_x, icon_y, icon_s);
+            else
+                aq_icon_doc(icon_x, icon_y, icon_s);
+
+            aq_text(files[i].name, GRID_X + 24,
+                    iy + (LIST_ROW_H - 8) / 2,
+                    (i == sel) ? AQ_TEXT_ON_ACCENT : AQ_TEXT);
+
+            const char *kind = files[i].is_dir ? "Folder" : "File";
+
+            aq_text(kind,
+                    GRID_RIGHT - 6 - aq_text_width(kind),
+                    iy + (LIST_ROW_H - 8) / 2,
+                    AQ_TEXT_SECOND);
+        }
+
+    } else {
+
     for (int i = 0; i < nfiles; i++) {
 
         int col = i % COLS;
@@ -712,7 +953,7 @@ void render(void)
 
         int visible_row = row - scroll_row;
 
-        if (visible_row < 0 || visible_row >= VISIBLE_ROWS)
+        if (visible_row < 0 || visible_row >= view_rows_per_page())
             continue;
 
         int ix = GRID_X + col * ITEM_W;
@@ -781,7 +1022,7 @@ void render(void)
 
         int visible_row = row - scroll_row;
 
-        if (visible_row >= 0 && visible_row < VISIBLE_ROWS) {
+        if (visible_row >= 0 && visible_row < view_rows_per_page()) {
 
             int ix = GRID_X + col * ITEM_W;
             int iy = GRID_Y + visible_row * ITEM_H;
@@ -799,9 +1040,11 @@ void render(void)
     }
 
 
+    }
+
     /* SCROLLBAR */
 
-    if (total_rows() > VISIBLE_ROWS) {
+    if (total_rows() > view_rows_per_page()) {
 
         int thumb_h = scrollbar_thumb_height();
         int thumb_y = scrollbar_thumb_y();
@@ -958,13 +1201,7 @@ static void open_selected(void)
             return;
         }
 
-        copy_text(current_root, path, sizeof(current_root));
-
-        sel = -1;
-        last_sel = -1;
-        scroll_row = 0;
-
-        reload_directory();
+        nav_to(path);
 
         return;
     }
@@ -1043,6 +1280,10 @@ void _start(void)
 
     reload_directory();
 
+    hist_pos = 0;
+    hist_len = 1;
+    copy_text(hist[0], current_root, PATH_MAX);
+
     render();
     ax_commit(g_canvas);
 
@@ -1063,39 +1304,51 @@ void _start(void)
 
             /* APPLICATION MENU */
 
-            if (ev.type == AX_EV_MENU && ev.key == 0) {
+            if (ev.type == AX_EV_MENU) {
 
-                switch (ev.w) {
+                if (ev.key == 0) {              /* File */
 
-                    case 0: /* File > Refresh */
+                    switch (ev.w) {
 
-                        reload_directory();
+                        case 0: /* Refresh */
+                            reload_directory();
+                            sel = -1;
+                            last_sel = -1;
+                            break;
 
+                        case 1: /* Delete Selected */
+                            delete_selected();
+                            break;
+
+                        case 2: /* Close Window */
+                            ax_win_close(g_canvas);
+                            return;
+                    }
+
+                } else if (ev.key == 1) {       /* Edit */
+
+                    if (ev.w == 0) {            /* Deselect */
                         sel = -1;
                         last_sel = -1;
+                        set_status("Deselected");
+                    }
 
-                        render();
-                        ax_commit(g_canvas);
+                } else if (ev.key == 2) {       /* Go */
 
-                        break;
+                    if (ev.w == 0) {            /* Up */
+                        go_up_nav();
+                    } else if (ev.w == 1) {     /* Root */
+                        go_root();
+                    }
 
+                } else if (ev.key == 3) {       /* View */
 
-                    case 1: /* File > Delete Selected */
-
-                        delete_selected();
-
-                        render();
-                        ax_commit(g_canvas);
-
-                        break;
-
-
-                    case 2: /* File > Close Window */
-
-                        ax_win_close(g_canvas);
-                        return;
+                    if (ev.w == 0) set_view(VIEW_ICONS);
+                    else if (ev.w == 1) set_view(VIEW_LIST);
                 }
 
+                render();
+                ax_commit(g_canvas);
                 continue;
             }
 
@@ -1137,7 +1390,7 @@ void _start(void)
              * SCROLLBAR
              * ================================================== */
 
-            if (total_rows() > VISIBLE_ROWS) {
+            if (total_rows() > view_rows_per_page()) {
 
                 int thumb_y = scrollbar_thumb_y();
                 int thumb_h = scrollbar_thumb_height();
@@ -1234,17 +1487,7 @@ void _start(void)
                 ev.my >= SB_ITEM_Y0 &&
                 ev.my < SB_ITEM_Y0 + SB_ITEM_H) {
 
-                copy_text(
-                    current_root,
-                    "initrd",
-                    sizeof(current_root)
-                );
-
-                reload_directory();
-
-                sel = -1;
-                last_sel = -1;
-                scroll_row = 0;
+                nav_to("initrd");
 
                 last_buttons = (int)ev.buttons;
 
@@ -1265,17 +1508,7 @@ void _start(void)
                 ev.my >= SB_ITEM_Y0 + SB_ITEM_H &&
                 ev.my < SB_ITEM_Y0 + 2 * SB_ITEM_H) {
 
-                copy_text(
-                    current_root,
-                    "disk0",
-                    sizeof(current_root)
-                );
-
-                reload_directory();
-
-                sel = -1;
-                last_sel = -1;
-                scroll_row = 0;
+                nav_to("disk0");
 
                 last_buttons = (int)ev.buttons;
 
@@ -1320,18 +1553,83 @@ void _start(void)
                 ev.my >= 4 &&
                 ev.my < 4 + 20) {
 
-                if (go_up()) {
+                nav_back();
 
-                    sel = -1;
-                    last_sel = -1;
-                    scroll_row = 0;
+                last_buttons = (int)ev.buttons;
 
-                    reload_directory();
+                render();
+                ax_commit(g_canvas);
 
-                } else {
+                continue;
+            }
 
-                    set_status("Already at volume root");
-                }
+
+            /* ==================================================
+             * FORWARD BUTTON
+             * ================================================== */
+
+            if (new_click &&
+                ev.mx >= 34 &&
+                ev.mx < 34 + 26 &&
+                ev.my >= 4 &&
+                ev.my < 4 + 20) {
+
+                nav_forward();
+
+                last_buttons = (int)ev.buttons;
+
+                render();
+                ax_commit(g_canvas);
+
+                continue;
+            }
+
+
+            /* ==================================================
+             * REFRESH BUTTON
+             * ================================================== */
+
+            if (new_click &&
+                ev.mx >= 128 &&
+                ev.mx < 128 + 26 &&
+                ev.my >= 4 &&
+                ev.my < 4 + 20) {
+
+                reload_directory();
+
+                sel = -1;
+                last_sel = -1;
+
+                last_buttons = (int)ev.buttons;
+
+                render();
+                ax_commit(g_canvas);
+
+                continue;
+            }
+
+
+            /* ==================================================
+             * VIEW SWITCH (icons / list)
+             * ================================================== */
+
+            if (new_click && ev.my >= 4 && ev.my < 4 + 20 &&
+                ev.mx >= 68 && ev.mx < 68 + 26) {
+
+                set_view(VIEW_ICONS);
+
+                last_buttons = (int)ev.buttons;
+
+                render();
+                ax_commit(g_canvas);
+
+                continue;
+            }
+
+            if (new_click && ev.my >= 4 && ev.my < 4 + 20 &&
+                ev.mx >= 94 && ev.mx < 94 + 26) {
+
+                set_view(VIEW_LIST);
 
                 last_buttons = (int)ev.buttons;
 
@@ -1348,6 +1646,21 @@ void _start(void)
 
             int hit = -1;
 
+            if (view_mode == VIEW_LIST) {
+
+                if (ev.mx >= GRID_X &&
+                    ev.my >= GRID_Y &&
+                    ev.my < GRID_BOTTOM) {
+
+                    int r = (ev.my - GRID_Y) / LIST_ROW_H;
+                    int idx = scroll_row + r;
+
+                    if (idx < nfiles)
+                        hit = idx;
+                }
+
+            } else {
+
             for (int i = 0; i < nfiles; i++) {
 
                 int col = i % COLS;
@@ -1358,7 +1671,7 @@ void _start(void)
                 if (visible_row < 0)
                     continue;
 
-                if (visible_row >= VISIBLE_ROWS)
+                if (visible_row >= view_rows_per_page())
                     continue;
 
                 int ix = GRID_X + col * ITEM_W;
@@ -1372,6 +1685,9 @@ void _start(void)
                     hit = i;
                     break;
                 }
+            }
+
+
             }
 
 

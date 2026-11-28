@@ -26,6 +26,7 @@ int unlink(const char *path);
 #include "../drivers/net/ixn_net.h"
 #include "../drivers/net/ixn_netdev.h"
 #include "../drivers/net/ixn_l2l3.h"
+#include "../drivers/net/ixn_socket_api.h"
 #include "../drivers/net/ixn_compat.h"
 #include "isr.h"
 
@@ -203,6 +204,69 @@ static void st_heap_reuse(void) {
     kfree(again);
 }
 
+/*
+ * ICMP echo через raw-сокет -- тот же путь, которым ходит userspace ping
+ * (socket/sendto/recvfrom).  Возврат: 1 -- ответ с нашими id/seq, иначе 0.
+ */
+static int st_ping_raw(ixn_netdev_t *dev, ixn_u32 dst, ixn_u16 id, ixn_u16 seq,
+                       ixn_u32 timeout_ms)
+{
+    ixn_u8 pkt[sizeof(ixn_icmp_hdr_t) + 14];
+    ixn_u8 rx[128];
+    ixn_icmp_hdr_t *icmp = (ixn_icmp_hdr_t *)pkt;
+    ixn_sockaddr_in_t sa;
+    ixn_fd_t fd;
+    ixn_socket_t *s;
+    ixn_u64 deadline;
+    int rc = 0;
+
+    ixn_memset(pkt, 0, sizeof(pkt));
+    icmp->type = IXN_ICMP_ECHO_REQUEST;
+    icmp->code = 0u;
+    icmp->id = IXN_htons(id);
+    icmp->seq = IXN_htons(seq);
+    ixn_memcpy(pkt + sizeof(*icmp), "ArtyomX64 ping", 14);
+
+    fd = ixn_api_socket(IXN_AF_INET, IXN_SOCK_RAW, IXN_IP_PROTO_ICMP);
+    if (fd < 0) return -1;
+
+    /* Проверяем конкретный интерфейс, а не default. */
+    s = ixn_api_get_socket(fd);
+    if (!s) { ixn_api_close(fd); return -1; }
+    s->dev = dev;
+
+    ixn_memset(&sa, 0, sizeof(sa));
+    sa.family = IXN_AF_INET;
+    sa.addr = dst;
+
+    if (ixn_api_sendto(fd, pkt, sizeof(pkt), 0u, &sa) < 0) {
+        ixn_api_close(fd);
+        return -1;
+    }
+
+    deadline = ixn_ticks_ms() + timeout_ms;
+    for (;;) {
+        int n = ixn_api_recvfrom(fd, rx, sizeof(rx), 0u, IXN_NULL);
+
+        if (n >= (int)sizeof(ixn_icmp_hdr_t)) {
+            ixn_icmp_hdr_t *r = (ixn_icmp_hdr_t *)rx;
+
+            if (r->type == IXN_ICMP_ECHO_REPLY &&
+                IXN_ntohs(r->id) == id && IXN_ntohs(r->seq) == seq) {
+                rc = 1;
+                break;
+            }
+        }
+
+        if (ixn_ticks_ms() >= deadline)
+            break;
+        ixn_pause();
+    }
+
+    ixn_api_close(fd);
+    return rc;
+}
+
 static void st_net(void) {
     ixn_netdev_t *dev = ixn_netdev_get_default();
     ixn_arp_entry_t *e;
@@ -248,17 +312,15 @@ static void st_net(void) {
         st_bad("net-arp-rx");
 
     /*
-     * ICMP end-to-end: 20 echo-request'ов к шлюзу тем же путём, что и
-     * syscall 213 (ping): send_echo -> poll -> ping_get_reply.
+     * ICMP end-to-end через raw-сокет -- тот же путь, которым ходит
+     * userspace ping (socket/sendto/recvfrom): пакет собирается здесь,
+     * стек считает checksum и шлёт, ответ попадает в rx-очередь сокета.
      * Считаем потери -- в серийный лог печатаем точное число ответов.
      * Контроль: пинг собственного адреса должен ходить через loopback
      * путь в ipv4_tx без участия сети.
      */
     {
         enum { PING_N = 50 };
-        extern int ixn_icmp_send_echo(ixn_netdev_t *dev, ixn_u32 dst_ip,
-                                      ixn_u16 id, ixn_u16 seq,
-                                      const ixn_u8 *data, ixn_u32 len);
         int t;
         for (t = 0; t < 2; t++) {
             ixn_u32 dst = t ? dev->ipv4_addr : probe_ip;
@@ -266,22 +328,8 @@ static void st_net(void) {
             char line[64];
             int ok = 0, i, pos;
             for (i = 1; i <= PING_N; i++) {
-                ixn_ping_reply_t rep;
-                ixn_u64 deadline = ixn_ticks_ms() + 1000u;
-                int got = 0;
-                ixn_ping_flush();
-                if (ixn_icmp_send_echo(dev, dst, 0x5049u, (ixn_u16)i,
-                                       (const ixn_u8 *)"ArtyomX64 ping", 14u) == 0) {
-                    for (;;) {
-                        if (ixn_ping_get_reply(&rep) == 0) {
-                            if (rep.seq == (ixn_u32)i) { got = 1; break; }
-                        } else if (ixn_ticks_ms() >= deadline) {
-                            break;
-                        }
-                        ixn_netdev_poll_all(64u);
-                    }
-                }
-                if (got) ok++;
+                if (st_ping_raw(dev, dst, 0x5049u, (ixn_u16)i, 1000u) > 0)
+                    ok++;
             }
             {
                 const char *suf = "/50 replies\n";
@@ -297,63 +345,20 @@ static void st_net(void) {
     }
 
     /*
-     * Loopback-контроль: ping 127.0.0.1 через lo тем же путём,
-     * что syscall 213.  Отдельно от net-icmp-self: тот пингует
-     * собственный адрес физического интерфейса, а здесь нужен
-     * именно lo (иначе на машине без NIC ping 127.0.0.1 ломался).
+     * Loopback-контроль: ping 127.0.0.1 через lo тем же raw-путём.
+     * Отдельно от net-icmp-self: тот пингует собственный адрес
+     * физического интерфейса, а здесь нужен именно lo (иначе на машине
+     * без NIC ping 127.0.0.1 ломался).
      */
     {
-        extern ixn_netdev_t *ixn_netdev_get_loopback(void);
         ixn_netdev_t *lo = ixn_netdev_get_loopback();
         int got = 0;
 
-        if (lo) {
-            ixn_ping_reply_t rep;
-            ixn_u64 deadline = ixn_ticks_ms() + 1000u;
-
-            ixn_ping_flush();
-            if (ixn_icmp_send_echo(lo, 0x7F000001u, 0x4C4Fu, 1u,
-                                   (const ixn_u8 *)"loop", 4u) == 0) {
-                for (;;) {
-                    if (ixn_ping_get_reply(&rep) == 0) {
-                        if (rep.seq == 1u) { got = 1; break; }
-                    } else if (ixn_ticks_ms() >= deadline) {
-                        break;
-                    }
-                    ixn_netdev_poll_all(64u);
-                }
-            }
-        }
+        if (lo && st_ping_raw(lo, 0x7F000001u, 0x4C4Fu, 1u, 1000u) > 0)
+            got = 1;
 
         serial_puts(got ? "net-icmp-loop 1/1 replies\n"
                         : "net-icmp-loop FAIL\n");
-    }
-
-    /*
-     * Контроль самого syscall 213 (без userspace): тот же путь,
-     * что у ping, с out-буфером в ядре.  Ловит ошибки разбора
-     * аргументов (r10) и выбора loopback-устройства.
-     */
-    {
-        extern void syscall_native_handler(registers_t *regs);
-        registers_t regs;
-        int64_t out[6];
-
-        memset(&regs, 0, sizeof(regs));
-        memset(out, 0, sizeof(out));
-        regs.rax = 213;
-        regs.rdi = (uint64_t)(uintptr_t)"127.0.0.1";
-        regs.rsi = 1;
-        regs.rdx = 1000;
-        regs.r10 = (uint64_t)(uintptr_t)out;
-
-        syscall_native_handler(&regs);
-
-        serial_puts("[SELFTEST] ping-syscall rc=");
-        debug_putnum((uint64_t)regs.rax);
-        serial_puts(" got=");
-        debug_putnum((uint64_t)out[0]);
-        serial_puts("\n");
     }
 }
 

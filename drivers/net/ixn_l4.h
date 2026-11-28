@@ -126,6 +126,9 @@ ixn_socket_t *ixn_socket_get(ixn_u32 id);
 int ixn_socket_bind(ixn_socket_t *s, ixn_u32 ip, ixn_u16 port);
 int ixn_udp_socket_recv(ixn_socket_t *s, ixn_u32 *out_src_ip, ixn_u16 *out_src_port, ixn_u8 *buf, ixn_u32 cap);
 int ixn_udp_socket_send(ixn_socket_t *s, ixn_u32 dst_ip, ixn_u16 dst_port, const ixn_u8 *data, ixn_u32 len);
+/* raw ICMP: копия каждого входящего ICMP-сообщения всем raw-сокетам */
+int ixn_icmp_socket_push(ixn_skb_t *skb);
+int ixn_icmp_socket_recv(ixn_socket_t *s, ixn_u8 *buf, ixn_u32 cap);
 int ixn_tcp_socket_recv(ixn_socket_t *s, ixn_u8 *buf, ixn_u32 cap);
 ixn_u32 ixn_socket_count(ixn_sock_type_t type);
 

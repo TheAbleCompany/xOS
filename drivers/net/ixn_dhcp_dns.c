@@ -246,10 +246,10 @@ int ixn_dns_resolve(ixn_netdev_t *dev, ixn_u32 dns_server, const char *name, ixn
     ixn_u32 off, nlen;
     ixn_u16 xid;
     ixn_socket_t *s;
-    ixn_u32 src_ip, rsp_ip;
+    ixn_u32 rsp_ip;
     ixn_u16 rsp_port;
     int rlen;
-    ixn_u32 spins;
+    ixn_u64 deadline;
     if (!dev || !name || !out_ip || dns_server == 0u) return -1;
     xid = (ixn_u16)(ixn_atomic_inc32(&g_ixn_dns_xid) & 0xFFFFu);
     ixn_memset(buf, 0, sizeof(buf));
@@ -269,17 +269,35 @@ int ixn_dns_resolve(ixn_netdev_t *dev, ixn_u32 dns_server, const char *name, ixn
     if (!s) return -3;
     s->dev = dev;
     s->local_ip = dev->ipv4_addr;
-    s->local_port = IXN_htons(10000u + (ixn_u16)(xid & 0xFFu));
+    /*
+     * local_port хранится в host order, как у всех сокетов стека:
+     * ixn_udp_find() сравнивает его с IXN_ntohs(uh->dst).  Раньше здесь
+     * лежал IXN_htons(...), и ответ DNS не находил свой сокет.
+     */
+    s->local_port = (ixn_u16)(10000u + (xid & 0xFFu));
+    /*
+     * Без MAC сервера ixn_ipv4_tx выбрасывает датаграмму, а не ждёт
+     * ARP, поэтому первый запрос после старта терялся.
+     */
+    if (!ixn_netdev_is_loopback(dev))
+        (void)ixn_arp_ensure(dev, dns_server, 500u);
     {
-        int rc = ixn_udp_send(dev, dev->ipv4_addr, IXN_ntohs(s->local_port), dns_server, IXN_DNS_PORT, buf, off);
+        int rc = ixn_udp_send(dev, dev->ipv4_addr, s->local_port, dns_server, IXN_DNS_PORT, buf, off);
         if (rc != 0) { ixn_socket_free(s); return -4; }
     }
-    spins = 2000u;
-    while (spins--) {
+    /*
+     * Ждём по настоящему времени (а не по счётчику итераций): ответ
+     * через интернет идёт десятки миллисекунд.  Планировщик
+     * кооперативный, поэтому каждый виток уступает квант.
+     */
+    deadline = ixn_ticks_ms() + 3000u;
+    for (;;) {
         rlen = ixn_udp_socket_recv(s, &rsp_ip, &rsp_port, buf, sizeof(buf));
         if (rlen > 0) break;
+        if (ixn_ticks_ms() >= deadline) break;
         ixn_netdev_poll_all(IXN_NETDEV_RX_BUDGET);
-        ixn_pause();
+        if (ixn_yield_hook) ixn_yield_hook();
+        else ixn_pause();
     }
     if (rlen <= 0) { ixn_socket_free(s); return -5; }
     ixn_socket_free(s);

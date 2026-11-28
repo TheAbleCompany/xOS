@@ -39,6 +39,7 @@
 #include "../lib/axquartz.h"
 #include "../lib/axaqua.h"
 #include "../lib/unistd.h"
+#include "../lib/axttf.h"
 
 typedef unsigned long long  u64int;
 typedef          long long  s64int;
@@ -91,6 +92,61 @@ typedef          char       s8int;
 #define PROMPT_MAXLEN   40
 
 #define MAX_WINS 4
+
+/* TrueType: размер шрифта документа (кнопки 11/13/16 в тулбаре). */
+static int font_size = 13;
+static int last_buttons = 0;
+
+static int text_line_height(void)
+{
+    if (axttf_ready())
+    {
+        int lh = axttf_line_height(font_size, 0);
+
+        if (lh > 6)
+            return lh;
+    }
+
+    return LINE_H;
+}
+
+static int text_advance(char c)
+{
+    if (axttf_ready())
+    {
+        const axttf_glyph *g = axttf_get_glyph((unsigned char)c, font_size);
+
+        if (g)
+            return g->adv;
+    }
+
+    return 8;
+}
+
+static void draw_char_ttf(char c, int x, int y, uint32_t color)
+{
+    const axttf_glyph *g = axttf_get_glyph((unsigned char)c, font_size);
+    int base;
+
+    if (!g)
+        return;
+
+    base = y + axttf_ascent(font_size, 0);
+
+    for (int yy = 0; yy < g->h; yy++)
+    {
+        const unsigned char *row = g->aa + yy * g->w;
+
+        for (int xx = 0; xx < g->w; xx++)
+        {
+            int a = row[xx];
+
+            if (a)
+                aq_px_alpha(x + g->xoff + xx, base + g->yoff + yy,
+                            ((uint32_t)a << 24) | (color & 0x00FFFFFF));
+        }
+    }
+}
 
 /* ============================================================
  * The app's OWN menu bar (macOS model: menus belong to the
@@ -449,13 +505,33 @@ static void render(note_win *w)
 
         int tw = ax_text_width(title);
         int tx = (g_cw - tw) / 2;
-        if (tx < 8) tx = 8;
+        if (tx < 92) tx = 92;   /* не наезжать на переключатель кегля */
         aq_text(title, tx, 8, w->dirty ? AQ_ACCENT : AQ_TOOL_TEXT);
     }
 
+    /* Font size (TrueType): склеенный переключатель 11 / 13 / 16. */
+    {
+        static const char *fs_lbl[3] = { "11", "13", "16" };
+        int active = (font_size <= 11) ? 0 : (font_size >= 16) ? 2 : 1;
+        int sx = 8, sw = 26, sh = 18, sy = 3;
+
+        aq_segmented(sx, sy, sw * 3, sh, 3, active);
+
+        for (int si = 0; si < 3; si++)
+        {
+            int tw = aq_text_width(fs_lbl[si]);
+
+            aq_text(fs_lbl[si], sx + si * sw + (sw - tw) / 2,
+                    sy + (sh - 8) / 2,
+                    si == active ? AQ_TEXT : AQ_TEXT_SECOND);
+        }
+    }
+
     /* Text area: draw the tail that fits (auto scroll to cursor). */
+    int lh = text_line_height();
+
     total_lines = count_lines(w);
-    max_lines   = (TEXT_YMAX - TEXT_Y0) / LINE_H;
+    max_lines   = (TEXT_YMAX - TEXT_Y0) / lh;
 
     if (max_lines < 1)
         max_lines = 1;
@@ -475,7 +551,7 @@ static void render(note_win *w)
         if (c == '\n')
         {
             if (skip > 0) { skip--; }
-            else          { y += LINE_H; }
+            else          { y += lh; }
 
             x = TEXT_X0;
             continue;
@@ -484,25 +560,30 @@ static void render(note_win *w)
         if ((unsigned char)c < 32)
             continue;
 
-        x += 8;
+        int adv = text_advance(c);
 
-        if (x > TEXT_XMAX)
+        if (x > TEXT_X0 && x + adv > TEXT_XMAX)
         {
             if (skip > 0) { skip--; }
-            else          { y += LINE_H; }
+            else          { y += lh; }
 
             x = TEXT_X0;
         }
 
-        if (skip == 0 && y + LINE_H <= TEXT_YMAX)
+        if (skip == 0 && y + lh <= TEXT_YMAX)
         {
-            draw_char_safe(c, x - 8, y, AQ_TEXT);
+            if (axttf_ready())
+                draw_char_ttf(c, x, y, AQ_TEXT);
+            else
+                draw_char_safe(c, x, y, AQ_TEXT);
         }
+
+        x += adv;
     }
 
     /* Cursor (always at the end of the document). */
-    if (!w->prompt_mode && y + 14 <= TEXT_YMAX)
-        aq_fill(x, y, 2, 14, AQ_ACCENT);
+    if (!w->prompt_mode && y + lh <= TEXT_YMAX)
+        aq_fill(x, y, 2, lh, AQ_ACCENT);
 
     /* Open prompt: Lion-style sheet with an inset text field. */
     if (w->prompt_mode)
@@ -851,6 +932,24 @@ void _start(void *raw_args)
                  * crash.
                  */
               
+                if (ev.type == AX_EV_MOUSE)
+                {
+                    if (ev.buttons && !last_buttons &&
+                        ev.my < TOOL_H &&
+                        ev.mx >= 8 && ev.mx < 8 + 78)
+                    {
+                        static const int fs_tab[3] = { 11, 13, 16 };
+                        int seg = (ev.mx - 8) / 26;
+
+                        if (seg >= 0 && seg < 3)
+                            font_size = fs_tab[seg];
+
+                        w->need_render = 1;
+                    }
+
+                    last_buttons = (int)ev.buttons;
+                }
+
                 if (ev.type == AX_EV_KEY)
                 {
                     handle_key(w, ev.key);
